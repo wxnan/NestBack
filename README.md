@@ -17,6 +17,18 @@
 
 未配置任何第三方服务时，App 依然是一个功能完善的单机版收纳工具。用户可按需接入 AI 识图、云端同步、冷备灾备等高级功能。
 
+## 下载安装
+
+### 下载链接
+- [GitHub releases](https://github.com/wxnan/nestback/releases)
+- [百度网盘](https://pan.baidu.com/s/1xAmufnzGhy4003HOZwd69Q?pwd=7ycp) （密码：7ycp）
+- [蓝奏云](https://dawnan.lanzoum.com/b032dvmk6j) （密码：2jec）
+
+### 下载说明
+
+- 加速下载：可选择 Github Proxy 加速下载。例如：[https://github.akams.cn/](https://github.akams.cn/)、[https://gh-proxy.com/](https://gh-proxy.com/) 等代理加速网站。
+- apk选择：根据设备架构选择对应的 apk 文件，注：大部分设备支持 arm64-v8a 架构。
+
 ## 核心功能
 
 ### 📦 物品管理
@@ -85,41 +97,6 @@ lib/
 - **Attributes**：自定义属性
 - **AppNotifications**：应用通知
 
-## 开始使用
-
-### 环境要求
-
-- Flutter SDK >= 3.11.5
-- Dart SDK >= 3.11.5
-
-### 安装依赖
-
-```bash
-flutter pub get
-```
-
-### 生成数据库代码
-
-```bash
-dart run build_runner build
-```
-
-### 运行应用
-
-```bash
-flutter run
-```
-
-### 构建发布版
-
-```bash
-# Android
-flutter build apk --release
-
-# iOS
-flutter build ios --release
-```
-
 ## 开发路线
 
 - [x] Phase 1：单机基石 - 数据库、多家庭、层级空间、手动录入
@@ -127,6 +104,30 @@ flutter build ios --release
 - [ ] Phase 3：极客底座 - WebDAV 备份、配置管理
 - [ ] Phase 4：AI 魔法 - LLM 接入、AI 识图/聊天录入
 - [ ] Phase 5：云端协同 - Supabase 同步、多成员协作
+
+## 开发功能
+
+### 已完成功能
+
+- [x] 支持手动录入功能
+- [x] 支持扫码录入功能
+- [x] 支持滑动手势快速操作
+- [x] 支持过期提醒功能
+- [x] 支持日均成本功能
+- [x] 支持物品添加图片、空间（容器）添加图片功能
+- [x] 支持空间层级管理功能
+- [x] 支持数据统计功能
+- [x] 支持多家庭管理功能
+- [x] 支持自定义分类、属性、标签功能
+- [x] 支持导入导出功能
+
+### 待完成功能
+
+- [ ] 支持AI识图功能
+- [ ] 支持AI聊天功能
+- [ ] 支持WebDAV备份功能
+- [ ] 支持实时同步功能
+- [ ] 支持家庭协作功能
 
 ## 文档
 
