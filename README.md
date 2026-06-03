@@ -52,6 +52,23 @@
 - **冷备灾备**：WebDAV 加密备份（坚果云等）
 - **扫码识别**：ML Kit 本地条码识别 + 自定义商品 API
 
+## 应用截图
+
+### 首页
+![首页](docs/images/首页.jpg)
+
+### 空间
+![空间](docs/images/空间.jpg)
+
+### 录入
+![录入](docs/images/录入.jpg)
+
+### 统计
+![统计](docs/images/统计.jpg)
+
+### 我的
+![我的](docs/images/我的.jpg)
+
 ## 技术栈
 
 | 模块 | 技术选型 |
