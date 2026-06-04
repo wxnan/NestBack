@@ -28,6 +28,7 @@
 
 - 加速下载：可选择 Github Proxy 加速下载。例如：[https://github.akams.cn/](https://github.akams.cn/)、[https://gh-proxy.com/](https://gh-proxy.com/) 等代理加速网站。
 - apk选择：根据设备架构选择对应的 apk 文件，注：大部分设备支持 arm64-v8a 架构。
+- ipa文件：仅提供 Runner.app.zip 文件和 Runner.ipa 文件，且未在苹果设备上测试，用户需自行解决签名问题。
 
 ## 核心功能
 
