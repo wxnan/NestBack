@@ -29,6 +29,7 @@
 - 加速下载：可选择 Github Proxy 加速下载。例如：[https://github.akams.cn/](https://github.akams.cn/)、[https://gh-proxy.com/](https://gh-proxy.com/) 等代理加速网站。
 - apk选择：根据设备架构选择对应的 apk 文件，注：大部分设备支持 arm64-v8a 架构。
 - ipa文件：仅提供 Runner.app.zip 文件和 Runner.ipa 文件，且未在苹果设备上测试，用户需自行解决签名问题。
+- 版本更新：更新前请备份好数据，避免数据丢失。
 
 ## 核心功能
 
@@ -119,7 +120,7 @@ lib/
 
 - [x] Phase 1：单机基石 - 数据库、多家庭、层级空间、手动录入
 - [x] Phase 2：数据透视 - 分类/标签/属性管理、统计图表
-- [ ] Phase 3：极客底座 - WebDAV 备份、配置管理
+- [x] Phase 3：极客底座 - WebDAV 备份、配置管理
 - [ ] Phase 4：AI 魔法 - LLM 接入、AI 识图/聊天录入
 - [ ] Phase 5：云端协同 - Supabase 同步、多成员协作
 
@@ -138,12 +139,12 @@ lib/
 - [x] 支持多家庭管理功能
 - [x] 支持自定义分类、属性、标签功能
 - [x] 支持导入导出功能
+- [x] 支持WebDAV备份功能
 
 ### 待完成功能
 
 - [ ] 支持AI识图功能
 - [ ] 支持AI聊天功能
-- [ ] 支持WebDAV备份功能
 - [ ] 支持实时同步功能
 - [ ] 支持家庭协作功能
 

@@ -26,6 +26,7 @@ class SpaceTab extends StatefulWidget {
 class _SpaceTabState extends State<SpaceTab> {
   bool _isSelectionMode = false;
   final Set<String> _selectedItemIds = {};
+  bool _isReordering = false;
 
   void _toggleSelectionMode() {
     setState(() {
@@ -370,12 +371,13 @@ class _SpaceTabState extends State<SpaceTab> {
     final currentSpaces = spaceProvider.currentSpaces;
     final pendingSpace = spaceProvider.getPendingSpace(houseId);
     final recycleBinSpace = spaceProvider.getRecycleBinSpace(houseId);
+    final currentSpace = spaceProvider.currentSpace;
 
-    final List<Widget> items = [];
+    final List<Widget> topItems = [];
 
-    // 先添加特殊空间卡片（顶层）
+    // 先添加特殊空间卡片（顶层，固定位置）
     if (spaceProvider.currentSpace == null && pendingSpace != null) {
-      items.add(_buildSpecialSpaceCard(
+      topItems.add(_buildSpecialSpaceCard(
         context,
         pendingSpace,
         Icons.pending_actions,
@@ -387,7 +389,7 @@ class _SpaceTabState extends State<SpaceTab> {
     }
 
     if (spaceProvider.currentSpace == null && recycleBinSpace != null) {
-      items.add(_buildSpecialSpaceCard(
+      topItems.add(_buildSpecialSpaceCard(
         context,
         recycleBinSpace,
         Icons.delete_outline,
@@ -399,19 +401,12 @@ class _SpaceTabState extends State<SpaceTab> {
       ));
     }
 
-    // 添加子空间卡片
-    items.addAll(currentSpaces.map((space) => _buildSpaceCard(
-          context,
-          space,
-          spaceProvider,
-          houseId,
-        )));
-
-    // 添加当前空间中的物品卡片
-    if (spaceProvider.currentSpace != null) {
-      final currentSpaceItems = spaceProvider.getItemsInSpace(allItems, spaceProvider.currentSpace!.id);
+    // 添加物品卡片（当前空间中的物品）
+    final List<Widget> itemCards = [];
+    if (currentSpace != null) {
+      final currentSpaceItems = spaceProvider.getItemsInSpace(allItems, currentSpace.id);
       if (currentSpaceItems.isNotEmpty) {
-        items.add(
+        itemCards.add(
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
@@ -420,34 +415,180 @@ class _SpaceTabState extends State<SpaceTab> {
             ),
           ),
         );
-        items.addAll(currentSpaceItems.map((item) => _buildItemCard(context, item, spaceProvider.currentSpace!.type)));
+        itemCards.addAll(currentSpaceItems.map((item) => _buildItemCard(context, item, currentSpace.type)));
       }
     }
 
-    if (items.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.folder_open, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              '暂无空间',
-              style: TextStyle(color: Colors.grey[600], fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '点击右下角"+"添加空间',
-              style: TextStyle(color: Colors.grey[400], fontSize: 14),
-            ),
-          ],
-        ),
+    // 如果没有子空间，显示简单列表
+    if (currentSpaces.isEmpty) {
+      final allItems = topItems + itemCards;
+      if (allItems.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.folder_open, size: 64, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                '暂无空间',
+                style: TextStyle(color: Colors.grey[600], fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '点击右下角"+"添加空间',
+                style: TextStyle(color: Colors.grey[400], fontSize: 14),
+              ),
+            ],
+          ),
+        );
+      }
+      return ListView(
+        padding: const EdgeInsets.all(16),
+        children: allItems,
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: items,
+    // 有子空间时，使用 ReorderableListView 支持拖拽排序
+    return CustomScrollView(
+      slivers: [
+        // 特殊空间卡片（固定位置，不可拖拽）
+        if (topItems.isNotEmpty)
+          SliverList(
+            delegate: SliverChildListDelegate(topItems),
+          ),
+        // 可拖拽排序的子空间卡片
+        SliverReorderableList(
+          itemBuilder: (context, index) {
+            final space = currentSpaces[index];
+            return ReorderableDelayedDragStartListener(
+              key: ValueKey(space.id),
+              index: index,
+              child: _buildReorderableSpaceCard(
+                context,
+                space,
+                spaceProvider,
+                houseId,
+              ),
+            );
+          },
+          itemCount: currentSpaces.length,
+          onReorder: (oldIndex, newIndex) async {
+            await spaceProvider.reorderSpaces(
+              houseId,
+              currentSpace?.id,
+              oldIndex,
+              newIndex,
+            );
+          },
+        ),
+        // 物品卡片（固定位置，不可拖拽）
+        if (itemCards.isNotEmpty)
+          SliverList(
+            delegate: SliverChildListDelegate(itemCards),
+          ),
+        // 底部提示
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 16, bottom: 80),
+            child: Text(
+              '长按空间卡片可拖拽排序',
+              style: TextStyle(color: Colors.grey[400], fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReorderableSpaceCard(BuildContext context, dynamic space,
+      SpaceProvider spaceProvider, String houseId) {
+    final childCount = spaceProvider.getChildSpaces(space.id).length;
+    final itemCount = spaceProvider
+        .getItemsInSpace(context.read<ItemProvider>().allItems, space.id)
+        .length;
+
+    return Slidable(
+      key: ValueKey(space.id),
+      endActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        extentRatio: 0.5,
+        children: [
+          SlidableAction(
+            onPressed: (context) => _editSpace(context, spaceProvider, space),
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            icon: Icons.edit,
+            label: '编辑',
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(12),
+              bottomLeft: Radius.circular(12),
+              topRight: Radius.circular(12),
+              bottomRight: Radius.circular(12),
+            ),
+            flex: 1,
+          ),
+          SlidableAction(
+            onPressed: (context) => _deleteSpace(context, spaceProvider, space),
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            icon: Icons.delete,
+            label: '删除',
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(12),
+              bottomRight: Radius.circular(12),
+              topLeft: Radius.circular(12),
+              bottomLeft: Radius.circular(12),
+            ),
+            flex: 1,
+          ),
+        ],
+      ),
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: InkWell(
+          onTap: () => _navigateToSpace(context, space),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                _buildSpaceAvatar(context, space),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        space.name,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      Text(
+                        childCount > 0 
+                            ? '$childCount 个子空间 · $itemCount 个物品' 
+                            : '$itemCount 个物品',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                // 拖拽手柄图标
+                ReorderableDragStartListener(
+                  index: spaceProvider.currentSpaces.indexOf(space),
+                  child: Icon(
+                    Icons.drag_handle,
+                    color: Colors.grey[400],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

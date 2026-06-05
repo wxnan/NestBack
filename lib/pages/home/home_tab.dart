@@ -82,6 +82,8 @@ class _HomeTabState extends State<HomeTab> {
         if (_lastHouseId != currentHouse.id || _lastSpaceCount != spaceProvider.spaces.length) {
           print('家庭或空间数据变化，重新设置特殊空间ID');
           _setSpecialSpaceIds(spaceProvider, itemProvider, currentHouse.id);
+          // 设置空间名称缓存用于搜索
+          _setSpaceNames(spaceProvider, itemProvider);
           _lastHouseId = currentHouse.id;
           _lastSpaceCount = spaceProvider.spaces.length;
         }
@@ -332,7 +334,7 @@ class _HomeTabState extends State<HomeTab> {
         child: TextField(
           controller: _searchController,
           decoration: InputDecoration(
-            hintText: '搜索物品...',
+            hintText: '搜索名称、分类、位置、标签、备注、品牌等...',
             hintStyle: TextStyle(color: Colors.grey[400]),
             prefixIcon: Padding(
               padding: const EdgeInsets.only(left: 16, right: 8),
@@ -1187,6 +1189,15 @@ class _HomeTabState extends State<HomeTab> {
     print('设置特殊空间ID列表: $specialSpaceIds');
     // 设置到 itemProvider
     itemProvider.setSpecialSpaceIds(specialSpaceIds);
+  }
+  
+  // 设置空间名称缓存用于搜索
+  void _setSpaceNames(SpaceProvider spaceProvider, ItemProvider itemProvider) {
+    final spaceNames = <String, String>{};
+    for (final space in spaceProvider.spaces) {
+      spaceNames[space.id] = space.name;
+    }
+    itemProvider.setSpaceNames(spaceNames);
   }
 
   Widget _buildActionButton(BuildContext context, IconData icon, VoidCallback onPressed) {

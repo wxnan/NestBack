@@ -16,6 +16,7 @@ import 'house_manager_page.dart';
 import 'feedback_page.dart';
 import 'barcode_settings_page.dart';
 import 'import_export_page.dart';
+import 'backup_settings_page.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
@@ -208,12 +209,18 @@ class ProfileTab extends StatelessWidget {
                 subtitle: 'Supabase 配置',
                 onTap: () => _showFeatureComingSoon(context, '同步设置'),
               ),
-              _buildSettingTile(
-                context,
-                icon: Icons.backup,
-                title: '备份设置',
-                subtitle: 'WebDAV 配置',
-                onTap: () => _showFeatureComingSoon(context, '备份设置'),
+              Consumer<SettingsProvider>(
+                builder: (context, settingsProvider, _) {
+                  return _buildSettingTile(
+                    context,
+                    icon: Icons.backup,
+                    title: '备份设置',
+                    subtitle: 'WebDAV 配置',
+                    configured: settingsProvider.isWebDavConfigured,
+                    statusText: settingsProvider.isWebDavConfigured ? '已配置' : '未配置',
+                    onTap: () => _showBackupSettings(context),
+                  );
+                },
               ),
               _buildSettingTile(
                 context,
@@ -439,6 +446,15 @@ class ProfileTab extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (context) => const ImportExportPage(),
+      ),
+    );
+  }
+
+  void _showBackupSettings(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const BackupSettingsPage(),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
+import 'package:intl/intl.dart';
 import '../database/database.dart';
 
 class ItemProvider extends ChangeNotifier {
@@ -14,6 +15,8 @@ class ItemProvider extends ChangeNotifier {
   bool _sortAscending = false;
   String? _currentSpaceId; // 当前显示的空间ID
   List<String>? _specialSpaceIds; // 特殊空间ID列表（回收站、垃圾桶等）
+  Map<String, Map<String, String>> _itemAttributes = {}; // 物品扩展属性缓存
+  Map<String, String> _spaceNames = {}; // 空间名称缓存
 
   ItemProvider(this._db);
 
@@ -28,6 +31,35 @@ class ItemProvider extends ChangeNotifier {
     _items = await (_db.select(_db.items)
           ..where((t) => t.houseId.equals(houseId)))
         .get();
+    
+    // 加载所有物品的扩展属性
+    await _loadItemAttributes(houseId);
+    
+    _applyFilters();
+  }
+  
+  // 加载物品扩展属性
+  Future<void> _loadItemAttributes(String houseId) async {
+    final itemIds = _items.map((i) => i.id).toList();
+    if (itemIds.isEmpty) {
+      _itemAttributes = {};
+      return;
+    }
+    
+    final attrs = await (_db.select(_db.itemAttributes)
+          ..where((t) => t.itemId.isIn(itemIds)))
+        .get();
+    
+    _itemAttributes = {};
+    for (final attr in attrs) {
+      _itemAttributes.putIfAbsent(attr.itemId, () => {});
+      _itemAttributes[attr.itemId]![attr.attributeId] = attr.value ?? '';
+    }
+  }
+  
+  // 设置空间名称缓存（由外部调用）
+  void setSpaceNames(Map<String, String> names) {
+    _spaceNames = names;
     _applyFilters();
   }
 
@@ -36,8 +68,7 @@ class ItemProvider extends ChangeNotifier {
     print('特殊空间ID列表: $_specialSpaceIds');
     
     _filteredItems = _items.where((item) {
-      final matchesSearch = _searchQuery.isEmpty ||
-          item.name.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesSearch = _matchesSearchQuery(item);
       final matchesCategory =
           _selectedCategory == null || item.category == _selectedCategory;
       final matchesTag = _selectedTag == null || _hasTag(item.tags, _selectedTag!);
@@ -95,6 +126,50 @@ class ItemProvider extends ChangeNotifier {
   bool _hasTag(String? tags, String tagName) {
     if (tags == null || tags.isEmpty) return false;
     return tags.contains(tagName);
+  }
+
+  /// 多字段搜索匹配
+  bool _matchesSearchQuery(Item item) {
+    if (_searchQuery.isEmpty) return true;
+    
+    final query = _searchQuery.toLowerCase();
+    
+    // 1. 搜索名称
+    if (item.name.toLowerCase().contains(query)) return true;
+    
+    // 2. 搜索分类
+    if (item.category != null && item.category!.toLowerCase().contains(query)) return true;
+    
+    // 3. 搜索标签
+    if (item.tags != null && item.tags!.toLowerCase().contains(query)) return true;
+    
+    // 4. 搜索备注
+    if (item.note != null && item.note!.toLowerCase().contains(query)) return true;
+    
+    // 5. 搜索位置（空间名称）
+    final spaceName = _spaceNames[item.spaceId];
+    if (spaceName != null && spaceName.toLowerCase().contains(query)) return true;
+    
+    // 6. 搜索日期（生产日期、过期日期）
+    final dateFormat = DateFormat('yyyy-MM-dd');
+    if (item.productionDate != null) {
+      final dateStr = dateFormat.format(item.productionDate!);
+      if (dateStr.contains(query)) return true;
+    }
+    if (item.expireDate != null) {
+      final dateStr = dateFormat.format(item.expireDate!);
+      if (dateStr.contains(query)) return true;
+    }
+    
+    // 7. 搜索扩展属性（品牌、厂商、规格、颜色、条形码等）
+    final attrs = _itemAttributes[item.id];
+    if (attrs != null) {
+      for (final value in attrs.values) {
+        if (value.toLowerCase().contains(query)) return true;
+      }
+    }
+    
+    return false;
   }
 
   void setSearchQuery(String query) {
