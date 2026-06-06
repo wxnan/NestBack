@@ -25,7 +25,7 @@ class _TagManagerPageState extends State<TagManagerPage> {
     final tagProvider = context.read<TagProvider>();
     final currentHouse = houseProvider.currentHouse;
     if (currentHouse != null) {
-      await tagProvider.loadTags(currentHouse.id);
+      await tagProvider.loadTags();
     }
   }
 
@@ -174,7 +174,7 @@ class _TagManagerPageState extends State<TagManagerPage> {
                   return;
                 }
 
-                if (await provider.isTagNameExists(currentHouse.id, name)) {
+                if (await provider.isTagNameExists(name)) {
                   setState(() {
                     errorText = '该标签名称已存在';
                   });
@@ -232,7 +232,7 @@ class _TagManagerPageState extends State<TagManagerPage> {
                   return;
                 }
 
-                if (name != tag.name && await provider.isTagNameExists(tag.houseId, name, excludeId: tag.id)) {
+                if (name != tag.name && await provider.isTagNameExists(name, excludeId: tag.id)) {
                   setState(() {
                     errorText = '该标签名称已存在';
                   });

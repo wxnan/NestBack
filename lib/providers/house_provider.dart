@@ -248,7 +248,7 @@ class HouseProvider extends ChangeNotifier {
       updatedAt: now,
     ));
 
-    await _createDefaultCategories(id);
+    // 分类、属性、标签是全局共享的，新家庭不再创建默认分类
     await _loadHouses();
   }
 
@@ -259,12 +259,7 @@ class HouseProvider extends ChangeNotifier {
     await (_db.delete(_db.spaces)
           ..where((t) => t.houseId.equals(houseId)))
         .go();
-    await (_db.delete(_db.categories)
-          ..where((t) => t.houseId.equals(houseId)))
-        .go();
-    await (_db.delete(_db.tags)
-          ..where((t) => t.houseId.equals(houseId)))
-        .go();
+    // 分类、属性、标签是全局共享的，不随家庭删除
     await (_db.delete(_db.houses)
           ..where((t) => t.id.equals(houseId)))
         .go();

@@ -863,7 +863,7 @@ class _ItemFormPageState extends State<ItemFormPage> {
         final currentHouse = houseProvider.currentHouse;
         if (currentHouse != null && tagProvider.tags.isEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            tagProvider.loadTags(currentHouse.id);
+            tagProvider.loadTags();
           });
         }
 

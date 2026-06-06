@@ -20,7 +20,7 @@ class AttributeManagerPage extends StatelessWidget {
 
           if (attributeProvider.attributes.isEmpty) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              attributeProvider.loadAttributes(currentHouse.id);
+              attributeProvider.loadAttributes();
             });
           }
 
@@ -338,7 +338,7 @@ class AttributeManagerPage extends StatelessWidget {
                   return;
                 }
 
-                if (await attributeProvider.isAttributeNameExists(currentHouse.id, name)) {
+                if (await attributeProvider.isAttributeNameExists(name)) {
                   setState(() {
                     nameError = '该属性名称已存在';
                   });
@@ -487,7 +487,7 @@ class AttributeManagerPage extends StatelessWidget {
                     return;
                   }
 
-                  if (name != attribute.name && await provider.isAttributeNameExists(attribute.houseId, name, excludeId: attribute.id)) {
+                  if (name != attribute.name && await provider.isAttributeNameExists(name, excludeId: attribute.id)) {
                     setState(() {
                       nameError = '该属性名称已存在';
                     });

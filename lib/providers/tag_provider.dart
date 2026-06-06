@@ -11,17 +11,16 @@ class TagProvider extends ChangeNotifier {
 
   List<Tag> get tags => _tags;
 
-  Future<void> loadTags(String houseId) async {
+  Future<void> loadTags() async {
     _tags = await (_db.select(_db.tags)
-          ..where((t) => t.houseId.equals(houseId))
           ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
         .get();
     notifyListeners();
   }
 
-  Future<bool> isTagNameExists(String houseId, String name, {String? excludeId}) async {
+  Future<bool> isTagNameExists(String name, {String? excludeId}) async {
     final query = _db.select(_db.tags)
-      ..where((t) => t.houseId.equals(houseId) & t.name.equals(name));
+      ..where((t) => t.name.equals(name));
     final results = await query.get();
     if (excludeId != null) {
       return results.any((t) => t.id != excludeId);
@@ -33,7 +32,7 @@ class TagProvider extends ChangeNotifier {
     required String houseId,
     required String name,
   }) async {
-    if (await isTagNameExists(houseId, name)) {
+    if (await isTagNameExists(name)) {
       return;
     }
 
@@ -48,21 +47,21 @@ class TagProvider extends ChangeNotifier {
       sortOrder: Value(maxOrder + 1),
       createdAt: DateTime.now(),
     ));
-    await loadTags(houseId);
+    await loadTags();
   }
 
   Future<void> updateTag(Tag tag, String newName) async {
-    if (await isTagNameExists(tag.houseId, newName, excludeId: tag.id)) {
+    if (await isTagNameExists(newName, excludeId: tag.id)) {
       return;
     }
     await (_db.update(_db.tags)..where((t) => t.id.equals(tag.id)))
         .write(TagsCompanion(name: Value(newName)));
-    await loadTags(tag.houseId);
+    await loadTags();
   }
 
   Future<void> deleteTag(Tag tag) async {
     await (_db.delete(_db.tags)..where((t) => t.id.equals(tag.id))).go();
-    await loadTags(tag.houseId);
+    await loadTags();
   }
 
   Future<void> reorderTags(int oldIndex, int newIndex) async {

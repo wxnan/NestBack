@@ -2,31 +2,28 @@ import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../database/database.dart' as db;
-import 'attribute_provider.dart';
 
 class CategoryProvider extends ChangeNotifier {
   List<db.Category> _categories = [];
   List<db.Subcategory> _subcategories = [];
   final db.AppDatabase _db;
-  final AttributeProvider _attributeProvider;
 
-  CategoryProvider(this._db, this._attributeProvider);
+  CategoryProvider(this._db);
 
   List<db.Category> get categories => _categories;
   List<db.Subcategory> get subcategories => _subcategories;
 
-  Future<void> loadCategories(String houseId) async {
+  Future<void> loadCategories() async {
     _categories = await (_db.select(_db.categories)
-            ..where((t) => t.houseId.equals(houseId))
             ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
         .get();
-    await loadAllSubcategories(houseId);
+    await loadAllSubcategories();
     notifyListeners();
   }
 
-  Future<bool> isCategoryNameExists(String houseId, String name, {String? excludeId}) async {
+  Future<bool> isCategoryNameExists(String name, {String? excludeId}) async {
     final query = _db.select(_db.categories)
-      ..where((t) => t.houseId.equals(houseId) & t.name.equals(name));
+      ..where((t) => t.name.equals(name));
     final results = await query.get();
     if (excludeId != null) {
       return results.any((c) => c.id != excludeId);
@@ -48,7 +45,7 @@ class CategoryProvider extends ChangeNotifier {
     String? icon,
     String? categoryType,
   }) async {
-    if (await isCategoryNameExists(houseId, name)) {
+    if (await isCategoryNameExists(name)) {
       return;
     }
 
@@ -64,7 +61,7 @@ class CategoryProvider extends ChangeNotifier {
           sortOrder: Value(maxOrder + 1),
           createdAt: DateTime.now(),
         ));
-    await loadCategories(houseId);
+    await loadCategories();
 
     if (categoryType != null) {
       await _createDefaultAttributes(houseId, id, categoryType);
@@ -78,7 +75,7 @@ class CategoryProvider extends ChangeNotifier {
       final config = attributeConfigs[i];
       String? existingAttrId;
       final existingAttrs = await (_db.select(_db.attributes)
-            ..where((t) => t.houseId.equals(houseId) & t.name.equals(config['name']!)))
+            ..where((t) => t.name.equals(config['name']!)))
           .get();
       if (existingAttrs.isNotEmpty) {
         existingAttrId = existingAttrs.first.id;
@@ -197,23 +194,23 @@ class CategoryProvider extends ChangeNotifier {
           sortOrder: Value(maxOrder + 1),
           createdAt: DateTime.now(),
         ));
-    await loadCategories(houseId);
+    await loadCategories();
     await _createDefaultAttributes(houseId, id, categoryType);
   }
 
   Future<void> updateCategory(db.Category category, String newName) async {
-    if (await isCategoryNameExists(category.houseId, newName, excludeId: category.id)) {
+    if (await isCategoryNameExists(newName, excludeId: category.id)) {
       return;
     }
     await (_db.update(_db.categories)
             ..where((t) => t.id.equals(category.id)))
         .write(db.CategoriesCompanion(name: Value(newName)));
-    await loadCategories(category.houseId);
+    await loadCategories();
   }
 
   Future<void> deleteCategory(db.Category category) async {
     await (_db.delete(_db.categories)..where((t) => t.id.equals(category.id))).go();
-    await loadCategories(category.houseId);
+    await loadCategories();
   }
 
   Future<void> reorderCategories(int oldIndex, int newIndex) async {
@@ -243,7 +240,7 @@ class CategoryProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> loadAllSubcategories(String houseId) async {
+  Future<void> loadAllSubcategories() async {
     final categoryIds = _categories.map((c) => c.id).toList();
     if (categoryIds.isEmpty) {
       _subcategories = [];
@@ -327,4 +324,3 @@ class CategoryProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
-

@@ -422,15 +422,28 @@ class ItemProvider extends ChangeNotifier {
     await loadItems(item.houseId);
   }
 
-  Future<void> moveItem(Item item, String targetSpaceId) async {
+  Future<void> moveItem(Item item, String targetSpaceId, {String? targetHouseId}) async {
     await (_db.update(_db.items)..where((t) => t.id.equals(item.id))).write(
       ItemsCompanion(
+        houseId: targetHouseId != null ? Value(targetHouseId) : const Value.absent(),
         spaceId: Value(targetSpaceId),
         modifierId: Value('user'),
         updatedAt: Value(DateTime.now()),
       ),
     );
     await loadItems(item.houseId);
+    // 如果移动到其他家庭，也加载目标家庭的物品
+    if (targetHouseId != null && targetHouseId != item.houseId) {
+      await loadItems(targetHouseId);
+    }
+  }
+
+  /// 获取单个物品的最新信息
+  Future<Item?> getItemById(String itemId) async {
+    final items = await (_db.select(_db.items)
+          ..where((t) => t.id.equals(itemId)))
+        .get();
+    return items.firstOrNull;
   }
 
   List<Item> getExpiredItems(String houseId) {

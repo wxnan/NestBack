@@ -130,6 +130,8 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
             const SizedBox(height: 16),
             if (!widget.isCopy && !widget.isSplit) ...[
               _buildMoveButton(),
+              const SizedBox(height: 8),
+              _buildMoveToOtherHouseButton(),
               const SizedBox(height: 16),
             ],
             const SizedBox(height: 100),
@@ -335,6 +337,21 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   Widget _buildCategorySelector() {
     return Consumer2<CategoryProvider, HouseProvider>(
       builder: (context, categoryProvider, houseProvider, _) {
+        // 确保 _selectedCategory 在当前分类列表中存在，否则重置为 null 或默认值
+        final categoryNames = categoryProvider.categories.map((c) => c.name).toList();
+        if (_selectedCategory != null && !categoryNames.contains(_selectedCategory)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _selectedCategory = categoryNames.isNotEmpty ? categoryNames.first : null;
+                _selectedCategoryId = categoryNames.isNotEmpty 
+                    ? categoryProvider.categories.first.id 
+                    : null;
+              });
+            }
+          });
+        }
+
         return DropdownButtonFormField<String>(
           value: _selectedCategory,
           decoration: InputDecoration(
@@ -914,7 +931,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
         final currentHouse = houseProvider.currentHouse;
         if (currentHouse != null && tagProvider.tags.isEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            tagProvider.loadTags(currentHouse.id);
+            tagProvider.loadTags();
           });
         }
 
@@ -1458,6 +1475,23 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     );
   }
 
+  Widget _buildMoveToOtherHouseButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => _moveToOtherHouse(context),
+        icon: const Icon(Icons.home_outlined),
+        label: const Text('移动到其他家庭'),
+        style: OutlinedButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSubmitButton() {
     String buttonText = '保存修改';
     if (widget.isCopy) {
@@ -1521,6 +1555,156 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
         setState(() {
           _selectedSpaceId = result;
         });
+      }
+    }
+  }
+
+  Future<void> _moveToOtherHouse(BuildContext context) async {
+    final houseProvider = context.read<HouseProvider>();
+    final spaceProvider = context.read<SpaceProvider>();
+    final itemProvider = context.read<ItemProvider>();
+
+    // 获取除当前家庭外的其他家庭
+    final otherHouses = houseProvider.houses
+        .where((h) => h.id != widget.item.houseId)
+        .toList();
+
+    if (otherHouses.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('没有其他家庭可移动')),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    // 第一步：选择目标家庭
+    final selectedHouse = await showModalBottomSheet<House>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.6,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  const Text('选择目标家庭', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: otherHouses.length,
+                itemBuilder: (context, index) {
+                  final house = otherHouses[index];
+                  return ListTile(
+                    leading: const Icon(Icons.home_outlined),
+                    title: Text(house.name),
+                    onTap: () => Navigator.pop(context, house),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (selectedHouse == null || !mounted) return;
+
+    // 第二步：加载目标家庭的空间列表
+    await spaceProvider.loadSpaces(selectedHouse.id);
+    final spaces = spaceProvider.spaces
+        .where((s) => s.type != 'trash')
+        .toList();
+
+    if (spaces.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${selectedHouse.name} 中没有可用空间')),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    // 第三步：选择目标空间
+    final selectedSpaceId = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.6,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  Text('选择 ${selectedHouse.name} 中的空间', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: spaces.length,
+                itemBuilder: (context, index) {
+                  final space = spaces[index];
+                  return ListTile(
+                    leading: Icon(_getSpaceIcon(space.type)),
+                    title: Text(space.name),
+                    subtitle: Text(_getSpaceTypeName(space.type)),
+                    onTap: () => Navigator.pop(context, space.id),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (selectedSpaceId != null) {
+      await itemProvider.moveItem(
+        widget.item,
+        selectedSpaceId,
+        targetHouseId: selectedHouse.id,
+      );
+
+      // 切换到目标家庭并加载物品和空间数据
+      houseProvider.switchHouse(selectedHouse);
+      await itemProvider.loadItems(selectedHouse.id);
+      await spaceProvider.loadSpaces(selectedHouse.id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('物品已移动到 ${selectedHouse.name}')),
+        );
+        Navigator.pop(context);
       }
     }
   }

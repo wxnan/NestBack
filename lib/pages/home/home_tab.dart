@@ -1338,11 +1338,11 @@ class _HomeTabState extends State<HomeTab> {
             houseProvider.switchHouse(house);
             await itemProvider.loadItems(houseId);
             if (!mounted) return;
-            await categoryProvider.loadCategories(houseId);
+            await categoryProvider.loadCategories();
             if (!mounted) return;
             await spaceProvider.loadSpaces(houseId);
             if (!mounted) return;
-            await tagProvider.loadTags(houseId);
+            await tagProvider.loadTags();
             if (!mounted) return;
             
             _setSpecialSpaceIds(spaceProvider, itemProvider, houseId);

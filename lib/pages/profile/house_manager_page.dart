@@ -261,11 +261,11 @@ class HouseManagerPage extends StatelessWidget {
               Navigator.pop(context);
               await context.read<ItemProvider>().loadItems(house.id);
               if (!context.mounted) return;
-              await context.read<CategoryProvider>().loadCategories(house.id);
+              await context.read<CategoryProvider>().loadCategories();
               if (!context.mounted) return;
               await context.read<SpaceProvider>().loadSpaces(house.id);
               if (!context.mounted) return;
-              await context.read<TagProvider>().loadTags(house.id);
+              await context.read<TagProvider>().loadTags();
               if (!context.mounted) return;
               _setSpecialSpaceIds(context, house.id);
               if (!context.mounted) return;

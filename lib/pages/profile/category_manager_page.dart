@@ -27,7 +27,7 @@ class _CategoryManagerPageState extends State<CategoryManagerPage> {
     final categoryProvider = context.read<CategoryProvider>();
     final currentHouse = houseProvider.currentHouse;
     if (currentHouse != null) {
-      await categoryProvider.loadCategories(currentHouse.id);
+      await categoryProvider.loadCategories();
     }
   }
 
@@ -206,7 +206,7 @@ class _CategoryManagerPageState extends State<CategoryManagerPage> {
                   return;
                 }
 
-                if (await provider.isCategoryNameExists(currentHouse.id, name)) {
+                if (await provider.isCategoryNameExists(name)) {
                   setState(() {
                     errorText = '该分类名称已存在';
                   });
@@ -264,7 +264,7 @@ class _CategoryManagerPageState extends State<CategoryManagerPage> {
                   return;
                 }
 
-                if (name != category.name && await provider.isCategoryNameExists(category.houseId, name, excludeId: category.id)) {
+                if (name != category.name && await provider.isCategoryNameExists(name, excludeId: category.id)) {
                   setState(() {
                     errorText = '该分类名称已存在';
                   });
@@ -321,7 +321,7 @@ class _CategoryManagerPageState extends State<CategoryManagerPage> {
             future: attributeProvider.getAttributesForCategory(category.id),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
-                attributeProvider.loadAttributes(currentHouse.id);
+                attributeProvider.loadAttributes();
                 return const AlertDialog(
                   title: Text('配置扩展属性'),
                   content: Center(child: CircularProgressIndicator()),

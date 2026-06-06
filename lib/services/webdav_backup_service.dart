@@ -13,7 +13,7 @@ class WebDavBackupService {
   final AppDatabase _db;
   final ImportExportService _importExportService;
 
-  WebDavBackupService(this._db, this._importExportService);
+  WebDavBackupService(this._db, _importExportService) : _importExportService = _importExportService;
 
   webdav.Client? _client;
   String? _remotePath;
@@ -59,20 +59,76 @@ class WebDavBackupService {
     }
   }
 
-  Future<String> backup(String houseId) async {
+  /// 获取家庭的安全目录名（替换不合法字符）
+  String _sanitizeDirName(String name) {
+    return name
+        .replaceAll('/', '_')
+        .replaceAll('\\', '_')
+        .replaceAll(':', '_')
+        .replaceAll('*', '_')
+        .replaceAll('?', '_')
+        .replaceAll('"', '_')
+        .replaceAll('<', '_')
+        .replaceAll('>', '_')
+        .replaceAll('|', '_')
+        .trim();
+  }
+
+  /// 获取家庭的备份目录路径
+  String _getHouseBackupPath(String houseName) {
+    final dirName = _sanitizeDirName(houseName);
+    return p.join(_remotePath!, dirName).replaceAll('\\', '/');
+  }
+
+  /// 确保远程目录存在
+  Future<void> _ensureDirExists(String path) async {
+    try {
+      await _client!.readDir(path);
+    } catch (e) {
+      await _client!.mkdir(path);
+    }
+  }
+
+  /// 上传 house_info.json 到家庭备份目录
+  Future<void> _uploadHouseInfo(String houseBackupPath, House house) async {
+    final info = {
+      'name': house.name,
+      'createdAt': house.createdAt.toIso8601String(),
+      'updatedAt': house.updatedAt.toIso8601String(),
+    };
+    final infoJson = jsonEncode(info);
+    final infoBytes = utf8.encode(infoJson);
+    
+    final tempDir = await getTemporaryDirectory();
+    final infoPath = p.join(tempDir.path, 'house_info.json');
+    await File(infoPath).writeAsBytes(infoBytes);
+    
+    final remotePath = p.join(houseBackupPath, 'house_info.json').replaceAll('\\', '/');
+    try {
+      await _client!.remove(remotePath);
+    } catch (_) {}
+    await _client!.writeFromFile(infoPath, remotePath);
+    
+    try {
+      await File(infoPath).delete();
+    } catch (_) {}
+  }
+
+  Future<String> backup(String houseId, String houseName) async {
     if (_client == null || _remotePath == null) {
       throw Exception('WebDAV未配置');
     }
 
-    // 创建家庭专属目录路径
-    final houseBackupPath = p.join(_remotePath!, houseId).replaceAll('\\', '/');
+    // 创建家庭专属目录路径（使用家庭名称）
+    final houseBackupPath = _getHouseBackupPath(houseName);
     
     // 确保家庭目录存在
-    try {
-      await _client!.readDir(houseBackupPath);
-    } catch (e) {
-      // 目录不存在，创建它
-      await _client!.mkdir(houseBackupPath);
+    await _ensureDirExists(houseBackupPath);
+
+    // 上传家庭信息文件
+    final house = await (_db.select(_db.houses)..where((t) => t.id.equals(houseId))).getSingleOrNull();
+    if (house != null) {
+      await _uploadHouseInfo(houseBackupPath, house);
     }
 
     // 导出数据为ZIP
@@ -96,9 +152,7 @@ class WebDavBackupService {
       await _client!.writeFromFile(
         encryptedPath,
         remoteFilePath,
-        onProgress: (count, total) {
-          // 可用于显示进度
-        },
+        onProgress: (count, total) {},
       );
       
       // 清理加密临时文件
@@ -110,9 +164,7 @@ class WebDavBackupService {
       await _client!.writeFromFile(
         zipPath,
         remoteFilePath,
-        onProgress: (count, total) {
-          // 可用于显示进度
-        },
+        onProgress: (count, total) {},
       );
     }
 
@@ -124,14 +176,14 @@ class WebDavBackupService {
     return remoteFilePath;
   }
 
-  Future<String> restore(String houseId, String remoteFileName, {String? sourceHouseId}) async {
+  Future<String> restore(String houseId, String houseName, String remoteFileName, {String? sourceHouseName}) async {
     if (_client == null || _remotePath == null) {
       throw Exception('WebDAV未配置');
     }
 
-    // 确定源目录（支持从其他家庭恢复）
-    final sourceHouse = sourceHouseId ?? houseId;
-    final houseBackupPath = p.join(_remotePath!, sourceHouse).replaceAll('\\', '/');
+    // 确定源目录
+    final sourceName = sourceHouseName ?? houseName;
+    final houseBackupPath = _getHouseBackupPath(sourceName);
     final remoteFilePath = p.join(houseBackupPath, remoteFileName).replaceAll('\\', '/');
     
     // 下载文件
@@ -141,9 +193,7 @@ class WebDavBackupService {
     await _client!.read2File(
       remoteFilePath,
       localPath,
-      onProgress: (count, total) {
-        // 可用于显示进度
-      },
+      onProgress: (count, total) {},
     );
 
     final downloadedFile = File(localPath);
@@ -178,15 +228,15 @@ class WebDavBackupService {
     return result.message;
   }
 
-  Future<List<BackupFileInfo>> listBackups(String houseId) async {
+  /// 列出指定家庭的备份
+  Future<List<BackupFileInfo>> listBackups(String houseName) async {
     if (_client == null || _remotePath == null) {
       throw Exception('WebDAV未配置');
     }
 
-    final houseBackupPath = p.join(_remotePath!, houseId).replaceAll('\\', '/');
+    final houseBackupPath = _getHouseBackupPath(houseName);
 
     try {
-      // 先检查目录是否存在
       await _client!.readDir(houseBackupPath);
       
       final files = await _client!.readDir(houseBackupPath);
@@ -198,7 +248,7 @@ class WebDavBackupService {
                 path: f.path!,
                 size: f.size ?? 0,
                 modifiedTime: f.mTime ?? DateTime.now(),
-                houseId: houseId,
+                houseName: houseName,
               ))
           .toList();
 
@@ -219,36 +269,58 @@ class WebDavBackupService {
 
     try {
       final files = await _client!.readDir(_remotePath!);
-      final houses = files
-          .where((f) => f.isDir ?? false)
-          .map((f) => HouseBackupInfo(
-                houseId: f.name!,
-                path: f.path!,
-              ))
-          .toList();
+      final houses = <HouseBackupInfo>[];
+      
+      for (final f in files) {
+        if (f.isDir ?? false) {
+          String displayName = f.name!;
+          DateTime? createdAt;
+          
+          // 尝试读取 house_info.json 获取家庭名称
+          try {
+            final infoPath = p.join(f.path!, 'house_info.json').replaceAll('\\', '/');
+            final infoBytes = await _client!.read(infoPath);
+            final infoJson = jsonDecode(utf8.decode(infoBytes)) as Map<String, dynamic>;
+            displayName = infoJson['name'] as String? ?? f.name!;
+            if (infoJson['createdAt'] != null) {
+              createdAt = DateTime.tryParse(infoJson['createdAt'] as String);
+            }
+          } catch (_) {
+            // 无法读取 house_info.json，使用目录名作为显示名
+          }
+          
+          houses.add(HouseBackupInfo(
+            dirName: f.name!,
+            displayName: displayName,
+            path: f.path!,
+            createdAt: createdAt,
+          ));
+        }
+      }
+      
       return houses;
     } catch (e) {
       return [];
     }
   }
 
-  Future<void> deleteBackup(String houseId, String remoteFileName) async {
+  Future<void> deleteBackup(String houseName, String remoteFileName) async {
     if (_client == null || _remotePath == null) {
       throw Exception('WebDAV未配置');
     }
 
-    final houseBackupPath = p.join(_remotePath!, houseId).replaceAll('\\', '/');
+    final houseBackupPath = _getHouseBackupPath(houseName);
     final remoteFilePath = p.join(houseBackupPath, remoteFileName).replaceAll('\\', '/');
     await _client!.remove(remoteFilePath);
   }
 
   /// 删除某个家庭的所有备份
-  Future<void> deleteHouseBackups(String houseId) async {
+  Future<void> deleteHouseBackups(String houseName) async {
     if (_client == null || _remotePath == null) {
       throw Exception('WebDAV未配置');
     }
 
-    final houseBackupPath = p.join(_remotePath!, houseId).replaceAll('\\', '/');
+    final houseBackupPath = _getHouseBackupPath(houseName);
     try {
       await _client!.remove(houseBackupPath);
     } catch (e) {
@@ -262,7 +334,6 @@ class WebDavBackupService {
     final encrypter = Encrypter(AES(Key(keyBytes), mode: AESMode.cbc));
     
     final encrypted = encrypter.encryptBytes(Uint8List.fromList(data), iv: iv);
-    // 将IV添加到加密数据前面
     return [...iv.bytes, ...encrypted.bytes];
   }
 
@@ -272,7 +343,6 @@ class WebDavBackupService {
     }
     
     final keyBytes = Uint8List.fromList(utf8.encode(key.padRight(32, '0').substring(0, 32)));
-    // 从数据中提取IV
     final ivBytes = Uint8List.fromList(data.sublist(0, 16));
     final iv = IV(ivBytes);
     final encryptedBytes = Uint8List.fromList(data.sublist(16));
@@ -292,14 +362,14 @@ class BackupFileInfo {
   final String path;
   final int size;
   final DateTime modifiedTime;
-  final String houseId;
+  final String houseName;
 
   BackupFileInfo({
     required this.name,
     required this.path,
     required this.size,
     required this.modifiedTime,
-    required this.houseId,
+    required this.houseName,
   });
 
   String get formattedSize {
@@ -318,11 +388,19 @@ class BackupFileInfo {
 }
 
 class HouseBackupInfo {
-  final String houseId;
+  /// WebDAV上的目录名（即 _sanitizeDirName 处理后的家庭名称）
+  final String dirName;
+  /// 显示名称（从 house_info.json 读取，或回退到 dirName）
+  final String displayName;
+  /// WebDAV路径
   final String path;
+  /// 家庭创建时间（从 house_info.json 读取）
+  final DateTime? createdAt;
 
   HouseBackupInfo({
-    required this.houseId,
+    required this.dirName,
+    required this.displayName,
     required this.path,
+    this.createdAt,
   });
 }

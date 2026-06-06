@@ -71,7 +71,7 @@ class _SimpleLoadingScreenState extends State<_SimpleLoadingScreen> {
       final attributeProvider = AttributeProvider(db);
       final itemProvider = ItemProvider(db);
       final spaceProvider = SpaceProvider(db);
-      final categoryProvider = CategoryProvider(db, attributeProvider);
+      final categoryProvider = CategoryProvider(db);
       final tagProvider = TagProvider(db);
       final settingsProvider = SettingsProvider();
       final notificationProvider = NotificationProvider(db);
@@ -87,11 +87,11 @@ class _SimpleLoadingScreenState extends State<_SimpleLoadingScreen> {
       if (houseProvider.currentHouse != null) {
         final houseId = houseProvider.currentHouse!.id;
         await Future.wait([
-          attributeProvider.loadAttributes(houseId).timeout(const Duration(seconds: 10)),
+          attributeProvider.loadAttributes().timeout(const Duration(seconds: 10)),
           spaceProvider.loadSpaces(houseId).timeout(const Duration(seconds: 10)),
           itemProvider.loadItems(houseId).timeout(const Duration(seconds: 10)),
-          categoryProvider.loadCategories(houseId).timeout(const Duration(seconds: 10)),
-          tagProvider.loadTags(houseId).timeout(const Duration(seconds: 10)),
+          categoryProvider.loadCategories().timeout(const Duration(seconds: 10)),
+          tagProvider.loadTags().timeout(const Duration(seconds: 10)),
           notificationProvider.loadNotifications().timeout(const Duration(seconds: 5)),
         ]);
       }

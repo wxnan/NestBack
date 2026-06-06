@@ -11,17 +11,16 @@ class AttributeProvider extends ChangeNotifier {
 
   List<Attribute> get attributes => _attributes;
 
-  Future<void> loadAttributes(String houseId) async {
+  Future<void> loadAttributes() async {
     _attributes = await (_db.select(_db.attributes)
-          ..where((t) => t.houseId.equals(houseId))
           ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
         .get();
     notifyListeners();
   }
 
-  Future<bool> isAttributeNameExists(String houseId, String name, {String? excludeId}) async {
+  Future<bool> isAttributeNameExists(String name, {String? excludeId}) async {
     final query = _db.select(_db.attributes)
-      ..where((t) => t.houseId.equals(houseId) & t.name.equals(name));
+      ..where((t) => t.name.equals(name));
     final results = await query.get();
     if (excludeId != null) {
       return results.any((a) => a.id != excludeId);
@@ -38,7 +37,7 @@ class AttributeProvider extends ChangeNotifier {
     bool required = false,
   }) async {
     final existingAttrs = await (_db.select(_db.attributes)
-          ..where((t) => t.houseId.equals(houseId) & t.name.equals(name)))
+          ..where((t) => t.name.equals(name)))
         .get();
     if (existingAttrs.isNotEmpty) {
       return;
@@ -60,7 +59,7 @@ class AttributeProvider extends ChangeNotifier {
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ));
-    await loadAttributes(houseId);
+    await loadAttributes();
   }
 
   Future<void> updateAttribute(Attribute attribute, {
@@ -80,7 +79,7 @@ class AttributeProvider extends ChangeNotifier {
           required: required != null ? Value(required) : Value.absent(),
           updatedAt: Value(DateTime.now()),
         ));
-    await loadAttributes(attribute.houseId);
+    await loadAttributes();
   }
 
   Future<void> deleteAttribute(Attribute attribute) async {
@@ -93,7 +92,7 @@ class AttributeProvider extends ChangeNotifier {
     await (_db.delete(_db.itemAttributes)
           ..where((t) => t.attributeId.equals(attribute.id)))
         .go();
-    await loadAttributes(attribute.houseId);
+    await loadAttributes();
   }
 
   Future<void> reorderAttributes(int oldIndex, int newIndex) async {

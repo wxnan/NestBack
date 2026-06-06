@@ -361,9 +361,9 @@ class _ImportExportPageState extends State<ImportExportPage> {
       await Future.wait([
         context.read<SpaceProvider>().loadSpaces(houseId),
         context.read<ItemProvider>().loadItems(houseId),
-        context.read<CategoryProvider>().loadCategories(houseId),
-        context.read<TagProvider>().loadTags(houseId),
-        context.read<AttributeProvider>().loadAttributes(houseId),
+        context.read<CategoryProvider>().loadCategories(),
+        context.read<TagProvider>().loadTags(),
+        context.read<AttributeProvider>().loadAttributes(),
       ]);
     }
   }

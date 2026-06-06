@@ -36,10 +36,10 @@ class HomePage extends StatefulWidget {
         await itemProvider.loadItems(currentHouse.id);
       }
       if (categoryProvider.categories.isEmpty) {
-        await categoryProvider.loadCategories(currentHouse.id);
+        await categoryProvider.loadCategories();
       }
       if (tagProvider.tags.isEmpty) {
-        await tagProvider.loadTags(currentHouse.id);
+        await tagProvider.loadTags();
       }
     }
   }
