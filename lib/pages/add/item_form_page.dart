@@ -14,11 +14,13 @@ import '../../providers/settings_provider.dart';
 import '../../providers/attribute_provider.dart';
 import '../../database/database.dart';
 import 'barcode_scanner_page.dart';
+import 'ai_vision_scan_page.dart';
 
 class ItemFormPage extends StatefulWidget {
   final BarcodeScanResult? barcodeResult;
+  final VisionScanResult? visionResult;
 
-  const ItemFormPage({super.key, this.barcodeResult});
+  const ItemFormPage({super.key, this.barcodeResult, this.visionResult});
 
   @override
   State<ItemFormPage> createState() => _ItemFormPageState();
@@ -70,6 +72,10 @@ class _ItemFormPageState extends State<ItemFormPage> {
 
     if (widget.barcodeResult != null) {
       _applyBarcodeResult(widget.barcodeResult!);
+    }
+
+    if (widget.visionResult != null) {
+      _applyVisionResult(widget.visionResult!);
     }
   }
 
@@ -176,6 +182,136 @@ class _ItemFormPageState extends State<ItemFormPage> {
 
     if (result.imageUrl != null && result.imageUrl!.isNotEmpty) {
       _downloadAndSetImage(result.imageUrl!);
+    }
+
+    setState(() {});
+  }
+
+  Future<void> _applyVisionResult(VisionScanResult result) async {
+    final categoryProvider = context.read<CategoryProvider>();
+    final attributeProvider = context.read<AttributeProvider>();
+
+    // 设置名称
+    if (result.name.isNotEmpty) {
+      _nameController.text = result.name;
+    }
+
+    // 设置封面图片
+    if (result.imagePath.isNotEmpty) {
+      _imagePath = result.imagePath;
+    }
+
+    // 匹配分类
+    if (result.category.isNotEmpty) {
+      final matchedCategory = categoryProvider.categories.firstWhere(
+        (c) => c.name == result.category,
+        orElse: () => Category(
+          id: '',
+          houseId: '',
+          name: '',
+          icon: null,
+          sortOrder: 0,
+          createdAt: DateTime.now(),
+        ),
+      );
+      if (matchedCategory.id.isNotEmpty) {
+        setState(() {
+          _selectedCategory = matchedCategory.name;
+          _selectedCategoryId = matchedCategory.id;
+        });
+      } else {
+        // 不属于现有分类，默认"其他"
+        final otherCategory = categoryProvider.categories.firstWhere(
+          (c) => c.name == '其他',
+          orElse: () => Category(
+            id: '',
+            houseId: '',
+            name: '其他',
+            icon: null,
+            sortOrder: 0,
+            createdAt: DateTime.now(),
+          ),
+        );
+        if (otherCategory.id.isNotEmpty) {
+          setState(() {
+            _selectedCategory = '其他';
+            _selectedCategoryId = otherCategory.id;
+          });
+        }
+      }
+    }
+
+    // 匹配二级分类
+    if (result.subcategory.isNotEmpty && _selectedCategoryId != null) {
+      final subcategories = categoryProvider.getSubcategoriesForCategory(_selectedCategoryId!);
+      final matchedSub = subcategories.firstWhere(
+        (s) => s.name == result.subcategory,
+        orElse: () => Subcategory(
+          id: '',
+          categoryId: '',
+          name: '',
+          sortOrder: 0,
+          createdAt: DateTime.now(),
+        ),
+      );
+      if (matchedSub.id.isNotEmpty) {
+        setState(() {
+          _selectedSubcategoryId = matchedSub.id;
+        });
+      }
+    }
+
+    // 填充扩展属性
+    final categoryId = _selectedCategoryId;
+    if (categoryId != null && categoryId.isNotEmpty) {
+      final attributes = await attributeProvider.getAttributesForCategory(categoryId);
+      final attributeNameMap = <String, Attribute>{};
+      for (final attr in attributes) {
+        attributeNameMap[attr.name] = attr;
+      }
+
+      final fieldMap = <String, String?>{
+        '品牌': result.brand.isNotEmpty ? result.brand : null,
+        '厂商': result.manufacturer.isNotEmpty ? result.manufacturer : null,
+        '规格': result.spec.isNotEmpty ? result.spec : null,
+        '颜色': result.color.isNotEmpty ? result.color : null,
+      };
+
+      final matchedFieldNames = <String>{};
+      for (final entry in fieldMap.entries) {
+        if (entry.value != null && entry.value!.isNotEmpty) {
+          final attr = attributeNameMap[entry.key];
+          if (attr != null) {
+            _customAttributes[attr.id] = entry.value!;
+            matchedFieldNames.add(entry.key);
+          }
+        }
+      }
+
+      // 未匹配到的属性和描述写入备注
+      final remarkParts = <String>[];
+      for (final entry in fieldMap.entries) {
+        if (!matchedFieldNames.contains(entry.key) && entry.value != null && entry.value!.isNotEmpty) {
+          remarkParts.add('${entry.key}: ${entry.value}');
+        }
+      }
+      if (result.description.isNotEmpty) {
+        remarkParts.add(result.description);
+      }
+      if (remarkParts.isNotEmpty) {
+        _noteController.text = remarkParts.join('\n');
+      }
+    } else {
+      // 没有分类时，所有信息写入备注
+      final noteParts = <String>[];
+      if (result.brand.isNotEmpty) noteParts.add('品牌: ${result.brand}');
+      if (result.manufacturer.isNotEmpty) noteParts.add('厂商: ${result.manufacturer}');
+      if (result.spec.isNotEmpty) noteParts.add('规格: ${result.spec}');
+      if (result.color.isNotEmpty) noteParts.add('颜色: ${result.color}');
+      if (result.description.isNotEmpty) noteParts.add(result.description);
+      if (noteParts.isNotEmpty) {
+        _noteController.text = noteParts.join('\n');
+      }
     }
 
     setState(() {});

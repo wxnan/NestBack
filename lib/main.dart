@@ -11,6 +11,7 @@ import 'providers/tag_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/attribute_provider.dart';
 import 'providers/notification_provider.dart';
+import 'providers/ai_provider.dart';
 import 'pages/home_page.dart';
 import 'pages/home/expired_items_page.dart';
 import 'pages/notification/notification_page.dart';
@@ -75,10 +76,12 @@ class _SimpleLoadingScreenState extends State<_SimpleLoadingScreen> {
       final tagProvider = TagProvider(db);
       final settingsProvider = SettingsProvider();
       final notificationProvider = NotificationProvider(db);
+      final aiProviderProvider = AiProviderProvider(db);
 
       await Future.wait([
         houseProvider.init().timeout(const Duration(seconds: 10)),
         settingsProvider.init().timeout(const Duration(seconds: 5)),
+        aiProviderProvider.init().timeout(const Duration(seconds: 5)),
         AppInfo.init().timeout(const Duration(seconds: 5)),
         NotificationService().init().timeout(const Duration(seconds: 5)),
         Future.delayed(const Duration(milliseconds: 500)),
@@ -123,6 +126,7 @@ class _SimpleLoadingScreenState extends State<_SimpleLoadingScreen> {
         tagProvider: tagProvider,
         settingsProvider: settingsProvider,
         notificationProvider: notificationProvider,
+        aiProviderProvider: aiProviderProvider,
       ));
     } catch (e) {
       debugPrint('Error initializing app: $e');
@@ -205,6 +209,7 @@ class NestBackApp extends StatelessWidget {
   final TagProvider tagProvider;
   final SettingsProvider settingsProvider;
   final NotificationProvider notificationProvider;
+  final AiProviderProvider aiProviderProvider;
 
   const NestBackApp({
     super.key,
@@ -217,6 +222,7 @@ class NestBackApp extends StatelessWidget {
     required this.tagProvider,
     required this.settingsProvider,
     required this.notificationProvider,
+    required this.aiProviderProvider,
   });
 
   @override
@@ -232,6 +238,7 @@ class NestBackApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: categoryProvider),
         ChangeNotifierProvider.value(value: tagProvider),
         ChangeNotifierProvider.value(value: notificationProvider),
+        ChangeNotifierProvider.value(value: aiProviderProvider),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,

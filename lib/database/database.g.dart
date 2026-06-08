@@ -4422,6 +4422,1471 @@ class ItemAttributesCompanion extends UpdateCompanion<ItemAttribute> {
   }
 }
 
+class $AiProvidersTable extends AiProviders
+    with TableInfo<$AiProvidersTable, AiProvider> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AiProvidersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _apiBaseUrlMeta = const VerificationMeta(
+    'apiBaseUrl',
+  );
+  @override
+  late final GeneratedColumn<String> apiBaseUrl = GeneratedColumn<String>(
+    'api_base_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _apiPathMeta = const VerificationMeta(
+    'apiPath',
+  );
+  @override
+  late final GeneratedColumn<String> apiPath = GeneratedColumn<String>(
+    'api_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('/chat/completions'),
+  );
+  static const VerificationMeta _apiKeyMeta = const VerificationMeta('apiKey');
+  @override
+  late final GeneratedColumn<String> apiKey = GeneratedColumn<String>(
+    'api_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _builtInApiKeyMeta = const VerificationMeta(
+    'builtInApiKey',
+  );
+  @override
+  late final GeneratedColumn<String> builtInApiKey = GeneratedColumn<String>(
+    'built_in_api_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _customHeadersMeta = const VerificationMeta(
+    'customHeaders',
+  );
+  @override
+  late final GeneratedColumn<String> customHeaders = GeneratedColumn<String>(
+    'custom_headers',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('{}'),
+  );
+  static const VerificationMeta _isBuiltInMeta = const VerificationMeta(
+    'isBuiltIn',
+  );
+  @override
+  late final GeneratedColumn<bool> isBuiltIn = GeneratedColumn<bool>(
+    'is_built_in',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_built_in" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isEnabledMeta = const VerificationMeta(
+    'isEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> isEnabled = GeneratedColumn<bool>(
+    'is_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _rateLimitMeta = const VerificationMeta(
+    'rateLimit',
+  );
+  @override
+  late final GeneratedColumn<String> rateLimit = GeneratedColumn<String>(
+    'rate_limit',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _registerUrlMeta = const VerificationMeta(
+    'registerUrl',
+  );
+  @override
+  late final GeneratedColumn<String> registerUrl = GeneratedColumn<String>(
+    'register_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _freeQuotaMeta = const VerificationMeta(
+    'freeQuota',
+  );
+  @override
+  late final GeneratedColumn<String> freeQuota = GeneratedColumn<String>(
+    'free_quota',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    apiBaseUrl,
+    apiPath,
+    apiKey,
+    builtInApiKey,
+    customHeaders,
+    isBuiltIn,
+    isEnabled,
+    rateLimit,
+    registerUrl,
+    freeQuota,
+    sortOrder,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ai_providers';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AiProvider> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('api_base_url')) {
+      context.handle(
+        _apiBaseUrlMeta,
+        apiBaseUrl.isAcceptableOrUnknown(
+          data['api_base_url']!,
+          _apiBaseUrlMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_apiBaseUrlMeta);
+    }
+    if (data.containsKey('api_path')) {
+      context.handle(
+        _apiPathMeta,
+        apiPath.isAcceptableOrUnknown(data['api_path']!, _apiPathMeta),
+      );
+    }
+    if (data.containsKey('api_key')) {
+      context.handle(
+        _apiKeyMeta,
+        apiKey.isAcceptableOrUnknown(data['api_key']!, _apiKeyMeta),
+      );
+    }
+    if (data.containsKey('built_in_api_key')) {
+      context.handle(
+        _builtInApiKeyMeta,
+        builtInApiKey.isAcceptableOrUnknown(
+          data['built_in_api_key']!,
+          _builtInApiKeyMeta,
+        ),
+      );
+    }
+    if (data.containsKey('custom_headers')) {
+      context.handle(
+        _customHeadersMeta,
+        customHeaders.isAcceptableOrUnknown(
+          data['custom_headers']!,
+          _customHeadersMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_built_in')) {
+      context.handle(
+        _isBuiltInMeta,
+        isBuiltIn.isAcceptableOrUnknown(data['is_built_in']!, _isBuiltInMeta),
+      );
+    }
+    if (data.containsKey('is_enabled')) {
+      context.handle(
+        _isEnabledMeta,
+        isEnabled.isAcceptableOrUnknown(data['is_enabled']!, _isEnabledMeta),
+      );
+    }
+    if (data.containsKey('rate_limit')) {
+      context.handle(
+        _rateLimitMeta,
+        rateLimit.isAcceptableOrUnknown(data['rate_limit']!, _rateLimitMeta),
+      );
+    }
+    if (data.containsKey('register_url')) {
+      context.handle(
+        _registerUrlMeta,
+        registerUrl.isAcceptableOrUnknown(
+          data['register_url']!,
+          _registerUrlMeta,
+        ),
+      );
+    }
+    if (data.containsKey('free_quota')) {
+      context.handle(
+        _freeQuotaMeta,
+        freeQuota.isAcceptableOrUnknown(data['free_quota']!, _freeQuotaMeta),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AiProvider map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AiProvider(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      apiBaseUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}api_base_url'],
+      )!,
+      apiPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}api_path'],
+      )!,
+      apiKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}api_key'],
+      )!,
+      builtInApiKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}built_in_api_key'],
+      )!,
+      customHeaders: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}custom_headers'],
+      )!,
+      isBuiltIn: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_built_in'],
+      )!,
+      isEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_enabled'],
+      )!,
+      rateLimit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rate_limit'],
+      ),
+      registerUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}register_url'],
+      ),
+      freeQuota: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}free_quota'],
+      ),
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AiProvidersTable createAlias(String alias) {
+    return $AiProvidersTable(attachedDatabase, alias);
+  }
+}
+
+class AiProvider extends DataClass implements Insertable<AiProvider> {
+  final String id;
+  final String name;
+  final String apiBaseUrl;
+  final String apiPath;
+  final String apiKey;
+  final String builtInApiKey;
+  final String customHeaders;
+  final bool isBuiltIn;
+  final bool isEnabled;
+  final String? rateLimit;
+  final String? registerUrl;
+  final String? freeQuota;
+  final int sortOrder;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const AiProvider({
+    required this.id,
+    required this.name,
+    required this.apiBaseUrl,
+    required this.apiPath,
+    required this.apiKey,
+    required this.builtInApiKey,
+    required this.customHeaders,
+    required this.isBuiltIn,
+    required this.isEnabled,
+    this.rateLimit,
+    this.registerUrl,
+    this.freeQuota,
+    required this.sortOrder,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['api_base_url'] = Variable<String>(apiBaseUrl);
+    map['api_path'] = Variable<String>(apiPath);
+    map['api_key'] = Variable<String>(apiKey);
+    map['built_in_api_key'] = Variable<String>(builtInApiKey);
+    map['custom_headers'] = Variable<String>(customHeaders);
+    map['is_built_in'] = Variable<bool>(isBuiltIn);
+    map['is_enabled'] = Variable<bool>(isEnabled);
+    if (!nullToAbsent || rateLimit != null) {
+      map['rate_limit'] = Variable<String>(rateLimit);
+    }
+    if (!nullToAbsent || registerUrl != null) {
+      map['register_url'] = Variable<String>(registerUrl);
+    }
+    if (!nullToAbsent || freeQuota != null) {
+      map['free_quota'] = Variable<String>(freeQuota);
+    }
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AiProvidersCompanion toCompanion(bool nullToAbsent) {
+    return AiProvidersCompanion(
+      id: Value(id),
+      name: Value(name),
+      apiBaseUrl: Value(apiBaseUrl),
+      apiPath: Value(apiPath),
+      apiKey: Value(apiKey),
+      builtInApiKey: Value(builtInApiKey),
+      customHeaders: Value(customHeaders),
+      isBuiltIn: Value(isBuiltIn),
+      isEnabled: Value(isEnabled),
+      rateLimit: rateLimit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(rateLimit),
+      registerUrl: registerUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(registerUrl),
+      freeQuota: freeQuota == null && nullToAbsent
+          ? const Value.absent()
+          : Value(freeQuota),
+      sortOrder: Value(sortOrder),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AiProvider.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AiProvider(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      apiBaseUrl: serializer.fromJson<String>(json['apiBaseUrl']),
+      apiPath: serializer.fromJson<String>(json['apiPath']),
+      apiKey: serializer.fromJson<String>(json['apiKey']),
+      builtInApiKey: serializer.fromJson<String>(json['builtInApiKey']),
+      customHeaders: serializer.fromJson<String>(json['customHeaders']),
+      isBuiltIn: serializer.fromJson<bool>(json['isBuiltIn']),
+      isEnabled: serializer.fromJson<bool>(json['isEnabled']),
+      rateLimit: serializer.fromJson<String?>(json['rateLimit']),
+      registerUrl: serializer.fromJson<String?>(json['registerUrl']),
+      freeQuota: serializer.fromJson<String?>(json['freeQuota']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'apiBaseUrl': serializer.toJson<String>(apiBaseUrl),
+      'apiPath': serializer.toJson<String>(apiPath),
+      'apiKey': serializer.toJson<String>(apiKey),
+      'builtInApiKey': serializer.toJson<String>(builtInApiKey),
+      'customHeaders': serializer.toJson<String>(customHeaders),
+      'isBuiltIn': serializer.toJson<bool>(isBuiltIn),
+      'isEnabled': serializer.toJson<bool>(isEnabled),
+      'rateLimit': serializer.toJson<String?>(rateLimit),
+      'registerUrl': serializer.toJson<String?>(registerUrl),
+      'freeQuota': serializer.toJson<String?>(freeQuota),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AiProvider copyWith({
+    String? id,
+    String? name,
+    String? apiBaseUrl,
+    String? apiPath,
+    String? apiKey,
+    String? builtInApiKey,
+    String? customHeaders,
+    bool? isBuiltIn,
+    bool? isEnabled,
+    Value<String?> rateLimit = const Value.absent(),
+    Value<String?> registerUrl = const Value.absent(),
+    Value<String?> freeQuota = const Value.absent(),
+    int? sortOrder,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => AiProvider(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    apiBaseUrl: apiBaseUrl ?? this.apiBaseUrl,
+    apiPath: apiPath ?? this.apiPath,
+    apiKey: apiKey ?? this.apiKey,
+    builtInApiKey: builtInApiKey ?? this.builtInApiKey,
+    customHeaders: customHeaders ?? this.customHeaders,
+    isBuiltIn: isBuiltIn ?? this.isBuiltIn,
+    isEnabled: isEnabled ?? this.isEnabled,
+    rateLimit: rateLimit.present ? rateLimit.value : this.rateLimit,
+    registerUrl: registerUrl.present ? registerUrl.value : this.registerUrl,
+    freeQuota: freeQuota.present ? freeQuota.value : this.freeQuota,
+    sortOrder: sortOrder ?? this.sortOrder,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AiProvider copyWithCompanion(AiProvidersCompanion data) {
+    return AiProvider(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      apiBaseUrl: data.apiBaseUrl.present
+          ? data.apiBaseUrl.value
+          : this.apiBaseUrl,
+      apiPath: data.apiPath.present ? data.apiPath.value : this.apiPath,
+      apiKey: data.apiKey.present ? data.apiKey.value : this.apiKey,
+      builtInApiKey: data.builtInApiKey.present
+          ? data.builtInApiKey.value
+          : this.builtInApiKey,
+      customHeaders: data.customHeaders.present
+          ? data.customHeaders.value
+          : this.customHeaders,
+      isBuiltIn: data.isBuiltIn.present ? data.isBuiltIn.value : this.isBuiltIn,
+      isEnabled: data.isEnabled.present ? data.isEnabled.value : this.isEnabled,
+      rateLimit: data.rateLimit.present ? data.rateLimit.value : this.rateLimit,
+      registerUrl: data.registerUrl.present
+          ? data.registerUrl.value
+          : this.registerUrl,
+      freeQuota: data.freeQuota.present ? data.freeQuota.value : this.freeQuota,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiProvider(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('apiBaseUrl: $apiBaseUrl, ')
+          ..write('apiPath: $apiPath, ')
+          ..write('apiKey: $apiKey, ')
+          ..write('builtInApiKey: $builtInApiKey, ')
+          ..write('customHeaders: $customHeaders, ')
+          ..write('isBuiltIn: $isBuiltIn, ')
+          ..write('isEnabled: $isEnabled, ')
+          ..write('rateLimit: $rateLimit, ')
+          ..write('registerUrl: $registerUrl, ')
+          ..write('freeQuota: $freeQuota, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    apiBaseUrl,
+    apiPath,
+    apiKey,
+    builtInApiKey,
+    customHeaders,
+    isBuiltIn,
+    isEnabled,
+    rateLimit,
+    registerUrl,
+    freeQuota,
+    sortOrder,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AiProvider &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.apiBaseUrl == this.apiBaseUrl &&
+          other.apiPath == this.apiPath &&
+          other.apiKey == this.apiKey &&
+          other.builtInApiKey == this.builtInApiKey &&
+          other.customHeaders == this.customHeaders &&
+          other.isBuiltIn == this.isBuiltIn &&
+          other.isEnabled == this.isEnabled &&
+          other.rateLimit == this.rateLimit &&
+          other.registerUrl == this.registerUrl &&
+          other.freeQuota == this.freeQuota &&
+          other.sortOrder == this.sortOrder &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AiProvidersCompanion extends UpdateCompanion<AiProvider> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> apiBaseUrl;
+  final Value<String> apiPath;
+  final Value<String> apiKey;
+  final Value<String> builtInApiKey;
+  final Value<String> customHeaders;
+  final Value<bool> isBuiltIn;
+  final Value<bool> isEnabled;
+  final Value<String?> rateLimit;
+  final Value<String?> registerUrl;
+  final Value<String?> freeQuota;
+  final Value<int> sortOrder;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const AiProvidersCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.apiBaseUrl = const Value.absent(),
+    this.apiPath = const Value.absent(),
+    this.apiKey = const Value.absent(),
+    this.builtInApiKey = const Value.absent(),
+    this.customHeaders = const Value.absent(),
+    this.isBuiltIn = const Value.absent(),
+    this.isEnabled = const Value.absent(),
+    this.rateLimit = const Value.absent(),
+    this.registerUrl = const Value.absent(),
+    this.freeQuota = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AiProvidersCompanion.insert({
+    required String id,
+    required String name,
+    required String apiBaseUrl,
+    this.apiPath = const Value.absent(),
+    this.apiKey = const Value.absent(),
+    this.builtInApiKey = const Value.absent(),
+    this.customHeaders = const Value.absent(),
+    this.isBuiltIn = const Value.absent(),
+    this.isEnabled = const Value.absent(),
+    this.rateLimit = const Value.absent(),
+    this.registerUrl = const Value.absent(),
+    this.freeQuota = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       apiBaseUrl = Value(apiBaseUrl),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<AiProvider> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? apiBaseUrl,
+    Expression<String>? apiPath,
+    Expression<String>? apiKey,
+    Expression<String>? builtInApiKey,
+    Expression<String>? customHeaders,
+    Expression<bool>? isBuiltIn,
+    Expression<bool>? isEnabled,
+    Expression<String>? rateLimit,
+    Expression<String>? registerUrl,
+    Expression<String>? freeQuota,
+    Expression<int>? sortOrder,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (apiBaseUrl != null) 'api_base_url': apiBaseUrl,
+      if (apiPath != null) 'api_path': apiPath,
+      if (apiKey != null) 'api_key': apiKey,
+      if (builtInApiKey != null) 'built_in_api_key': builtInApiKey,
+      if (customHeaders != null) 'custom_headers': customHeaders,
+      if (isBuiltIn != null) 'is_built_in': isBuiltIn,
+      if (isEnabled != null) 'is_enabled': isEnabled,
+      if (rateLimit != null) 'rate_limit': rateLimit,
+      if (registerUrl != null) 'register_url': registerUrl,
+      if (freeQuota != null) 'free_quota': freeQuota,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AiProvidersCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? apiBaseUrl,
+    Value<String>? apiPath,
+    Value<String>? apiKey,
+    Value<String>? builtInApiKey,
+    Value<String>? customHeaders,
+    Value<bool>? isBuiltIn,
+    Value<bool>? isEnabled,
+    Value<String?>? rateLimit,
+    Value<String?>? registerUrl,
+    Value<String?>? freeQuota,
+    Value<int>? sortOrder,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AiProvidersCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      apiBaseUrl: apiBaseUrl ?? this.apiBaseUrl,
+      apiPath: apiPath ?? this.apiPath,
+      apiKey: apiKey ?? this.apiKey,
+      builtInApiKey: builtInApiKey ?? this.builtInApiKey,
+      customHeaders: customHeaders ?? this.customHeaders,
+      isBuiltIn: isBuiltIn ?? this.isBuiltIn,
+      isEnabled: isEnabled ?? this.isEnabled,
+      rateLimit: rateLimit ?? this.rateLimit,
+      registerUrl: registerUrl ?? this.registerUrl,
+      freeQuota: freeQuota ?? this.freeQuota,
+      sortOrder: sortOrder ?? this.sortOrder,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (apiBaseUrl.present) {
+      map['api_base_url'] = Variable<String>(apiBaseUrl.value);
+    }
+    if (apiPath.present) {
+      map['api_path'] = Variable<String>(apiPath.value);
+    }
+    if (apiKey.present) {
+      map['api_key'] = Variable<String>(apiKey.value);
+    }
+    if (builtInApiKey.present) {
+      map['built_in_api_key'] = Variable<String>(builtInApiKey.value);
+    }
+    if (customHeaders.present) {
+      map['custom_headers'] = Variable<String>(customHeaders.value);
+    }
+    if (isBuiltIn.present) {
+      map['is_built_in'] = Variable<bool>(isBuiltIn.value);
+    }
+    if (isEnabled.present) {
+      map['is_enabled'] = Variable<bool>(isEnabled.value);
+    }
+    if (rateLimit.present) {
+      map['rate_limit'] = Variable<String>(rateLimit.value);
+    }
+    if (registerUrl.present) {
+      map['register_url'] = Variable<String>(registerUrl.value);
+    }
+    if (freeQuota.present) {
+      map['free_quota'] = Variable<String>(freeQuota.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiProvidersCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('apiBaseUrl: $apiBaseUrl, ')
+          ..write('apiPath: $apiPath, ')
+          ..write('apiKey: $apiKey, ')
+          ..write('builtInApiKey: $builtInApiKey, ')
+          ..write('customHeaders: $customHeaders, ')
+          ..write('isBuiltIn: $isBuiltIn, ')
+          ..write('isEnabled: $isEnabled, ')
+          ..write('rateLimit: $rateLimit, ')
+          ..write('registerUrl: $registerUrl, ')
+          ..write('freeQuota: $freeQuota, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AiModelsTable extends AiModels with TableInfo<$AiModelsTable, AiModel> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AiModelsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _providerIdMeta = const VerificationMeta(
+    'providerId',
+  );
+  @override
+  late final GeneratedColumn<String> providerId = GeneratedColumn<String>(
+    'provider_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES ai_providers (id)',
+    ),
+  );
+  static const VerificationMeta _modelIdMeta = const VerificationMeta(
+    'modelId',
+  );
+  @override
+  late final GeneratedColumn<String> modelId = GeneratedColumn<String>(
+    'model_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('chat'),
+  );
+  static const VerificationMeta _isBuiltInMeta = const VerificationMeta(
+    'isBuiltIn',
+  );
+  @override
+  late final GeneratedColumn<bool> isBuiltIn = GeneratedColumn<bool>(
+    'is_built_in',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_built_in" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isEnabledMeta = const VerificationMeta(
+    'isEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> isEnabled = GeneratedColumn<bool>(
+    'is_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    providerId,
+    modelId,
+    name,
+    type,
+    isBuiltIn,
+    isEnabled,
+    sortOrder,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ai_models';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AiModel> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('provider_id')) {
+      context.handle(
+        _providerIdMeta,
+        providerId.isAcceptableOrUnknown(data['provider_id']!, _providerIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_providerIdMeta);
+    }
+    if (data.containsKey('model_id')) {
+      context.handle(
+        _modelIdMeta,
+        modelId.isAcceptableOrUnknown(data['model_id']!, _modelIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_modelIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    }
+    if (data.containsKey('is_built_in')) {
+      context.handle(
+        _isBuiltInMeta,
+        isBuiltIn.isAcceptableOrUnknown(data['is_built_in']!, _isBuiltInMeta),
+      );
+    }
+    if (data.containsKey('is_enabled')) {
+      context.handle(
+        _isEnabledMeta,
+        isEnabled.isAcceptableOrUnknown(data['is_enabled']!, _isEnabledMeta),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AiModel map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AiModel(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      providerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}provider_id'],
+      )!,
+      modelId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}model_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      isBuiltIn: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_built_in'],
+      )!,
+      isEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_enabled'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AiModelsTable createAlias(String alias) {
+    return $AiModelsTable(attachedDatabase, alias);
+  }
+}
+
+class AiModel extends DataClass implements Insertable<AiModel> {
+  final String id;
+  final String providerId;
+  final String modelId;
+  final String name;
+  final String type;
+  final bool isBuiltIn;
+  final bool isEnabled;
+  final int sortOrder;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const AiModel({
+    required this.id,
+    required this.providerId,
+    required this.modelId,
+    required this.name,
+    required this.type,
+    required this.isBuiltIn,
+    required this.isEnabled,
+    required this.sortOrder,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['provider_id'] = Variable<String>(providerId);
+    map['model_id'] = Variable<String>(modelId);
+    map['name'] = Variable<String>(name);
+    map['type'] = Variable<String>(type);
+    map['is_built_in'] = Variable<bool>(isBuiltIn);
+    map['is_enabled'] = Variable<bool>(isEnabled);
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AiModelsCompanion toCompanion(bool nullToAbsent) {
+    return AiModelsCompanion(
+      id: Value(id),
+      providerId: Value(providerId),
+      modelId: Value(modelId),
+      name: Value(name),
+      type: Value(type),
+      isBuiltIn: Value(isBuiltIn),
+      isEnabled: Value(isEnabled),
+      sortOrder: Value(sortOrder),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AiModel.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AiModel(
+      id: serializer.fromJson<String>(json['id']),
+      providerId: serializer.fromJson<String>(json['providerId']),
+      modelId: serializer.fromJson<String>(json['modelId']),
+      name: serializer.fromJson<String>(json['name']),
+      type: serializer.fromJson<String>(json['type']),
+      isBuiltIn: serializer.fromJson<bool>(json['isBuiltIn']),
+      isEnabled: serializer.fromJson<bool>(json['isEnabled']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'providerId': serializer.toJson<String>(providerId),
+      'modelId': serializer.toJson<String>(modelId),
+      'name': serializer.toJson<String>(name),
+      'type': serializer.toJson<String>(type),
+      'isBuiltIn': serializer.toJson<bool>(isBuiltIn),
+      'isEnabled': serializer.toJson<bool>(isEnabled),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AiModel copyWith({
+    String? id,
+    String? providerId,
+    String? modelId,
+    String? name,
+    String? type,
+    bool? isBuiltIn,
+    bool? isEnabled,
+    int? sortOrder,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => AiModel(
+    id: id ?? this.id,
+    providerId: providerId ?? this.providerId,
+    modelId: modelId ?? this.modelId,
+    name: name ?? this.name,
+    type: type ?? this.type,
+    isBuiltIn: isBuiltIn ?? this.isBuiltIn,
+    isEnabled: isEnabled ?? this.isEnabled,
+    sortOrder: sortOrder ?? this.sortOrder,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AiModel copyWithCompanion(AiModelsCompanion data) {
+    return AiModel(
+      id: data.id.present ? data.id.value : this.id,
+      providerId: data.providerId.present
+          ? data.providerId.value
+          : this.providerId,
+      modelId: data.modelId.present ? data.modelId.value : this.modelId,
+      name: data.name.present ? data.name.value : this.name,
+      type: data.type.present ? data.type.value : this.type,
+      isBuiltIn: data.isBuiltIn.present ? data.isBuiltIn.value : this.isBuiltIn,
+      isEnabled: data.isEnabled.present ? data.isEnabled.value : this.isEnabled,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiModel(')
+          ..write('id: $id, ')
+          ..write('providerId: $providerId, ')
+          ..write('modelId: $modelId, ')
+          ..write('name: $name, ')
+          ..write('type: $type, ')
+          ..write('isBuiltIn: $isBuiltIn, ')
+          ..write('isEnabled: $isEnabled, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    providerId,
+    modelId,
+    name,
+    type,
+    isBuiltIn,
+    isEnabled,
+    sortOrder,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AiModel &&
+          other.id == this.id &&
+          other.providerId == this.providerId &&
+          other.modelId == this.modelId &&
+          other.name == this.name &&
+          other.type == this.type &&
+          other.isBuiltIn == this.isBuiltIn &&
+          other.isEnabled == this.isEnabled &&
+          other.sortOrder == this.sortOrder &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AiModelsCompanion extends UpdateCompanion<AiModel> {
+  final Value<String> id;
+  final Value<String> providerId;
+  final Value<String> modelId;
+  final Value<String> name;
+  final Value<String> type;
+  final Value<bool> isBuiltIn;
+  final Value<bool> isEnabled;
+  final Value<int> sortOrder;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const AiModelsCompanion({
+    this.id = const Value.absent(),
+    this.providerId = const Value.absent(),
+    this.modelId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.type = const Value.absent(),
+    this.isBuiltIn = const Value.absent(),
+    this.isEnabled = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AiModelsCompanion.insert({
+    required String id,
+    required String providerId,
+    required String modelId,
+    required String name,
+    this.type = const Value.absent(),
+    this.isBuiltIn = const Value.absent(),
+    this.isEnabled = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       providerId = Value(providerId),
+       modelId = Value(modelId),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<AiModel> custom({
+    Expression<String>? id,
+    Expression<String>? providerId,
+    Expression<String>? modelId,
+    Expression<String>? name,
+    Expression<String>? type,
+    Expression<bool>? isBuiltIn,
+    Expression<bool>? isEnabled,
+    Expression<int>? sortOrder,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (providerId != null) 'provider_id': providerId,
+      if (modelId != null) 'model_id': modelId,
+      if (name != null) 'name': name,
+      if (type != null) 'type': type,
+      if (isBuiltIn != null) 'is_built_in': isBuiltIn,
+      if (isEnabled != null) 'is_enabled': isEnabled,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AiModelsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? providerId,
+    Value<String>? modelId,
+    Value<String>? name,
+    Value<String>? type,
+    Value<bool>? isBuiltIn,
+    Value<bool>? isEnabled,
+    Value<int>? sortOrder,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AiModelsCompanion(
+      id: id ?? this.id,
+      providerId: providerId ?? this.providerId,
+      modelId: modelId ?? this.modelId,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      isBuiltIn: isBuiltIn ?? this.isBuiltIn,
+      isEnabled: isEnabled ?? this.isEnabled,
+      sortOrder: sortOrder ?? this.sortOrder,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (providerId.present) {
+      map['provider_id'] = Variable<String>(providerId.value);
+    }
+    if (modelId.present) {
+      map['model_id'] = Variable<String>(modelId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (isBuiltIn.present) {
+      map['is_built_in'] = Variable<bool>(isBuiltIn.value);
+    }
+    if (isEnabled.present) {
+      map['is_enabled'] = Variable<bool>(isEnabled.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiModelsCompanion(')
+          ..write('id: $id, ')
+          ..write('providerId: $providerId, ')
+          ..write('modelId: $modelId, ')
+          ..write('name: $name, ')
+          ..write('type: $type, ')
+          ..write('isBuiltIn: $isBuiltIn, ')
+          ..write('isEnabled: $isEnabled, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AppNotificationsTable extends AppNotifications
     with TableInfo<$AppNotificationsTable, AppNotification> {
   @override
@@ -4882,6 +6347,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CategoryAttributesTable categoryAttributes =
       $CategoryAttributesTable(this);
   late final $ItemAttributesTable itemAttributes = $ItemAttributesTable(this);
+  late final $AiProvidersTable aiProviders = $AiProvidersTable(this);
+  late final $AiModelsTable aiModels = $AiModelsTable(this);
   late final $AppNotificationsTable appNotifications = $AppNotificationsTable(
     this,
   );
@@ -4899,6 +6366,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     attributes,
     categoryAttributes,
     itemAttributes,
+    aiProviders,
+    aiModels,
     appNotifications,
   ];
 }
@@ -9444,6 +10913,920 @@ typedef $$ItemAttributesTableProcessedTableManager =
       ItemAttribute,
       PrefetchHooks Function({bool itemId, bool attributeId})
     >;
+typedef $$AiProvidersTableCreateCompanionBuilder =
+    AiProvidersCompanion Function({
+      required String id,
+      required String name,
+      required String apiBaseUrl,
+      Value<String> apiPath,
+      Value<String> apiKey,
+      Value<String> builtInApiKey,
+      Value<String> customHeaders,
+      Value<bool> isBuiltIn,
+      Value<bool> isEnabled,
+      Value<String?> rateLimit,
+      Value<String?> registerUrl,
+      Value<String?> freeQuota,
+      Value<int> sortOrder,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AiProvidersTableUpdateCompanionBuilder =
+    AiProvidersCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> apiBaseUrl,
+      Value<String> apiPath,
+      Value<String> apiKey,
+      Value<String> builtInApiKey,
+      Value<String> customHeaders,
+      Value<bool> isBuiltIn,
+      Value<bool> isEnabled,
+      Value<String?> rateLimit,
+      Value<String?> registerUrl,
+      Value<String?> freeQuota,
+      Value<int> sortOrder,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$AiProvidersTableReferences
+    extends BaseReferences<_$AppDatabase, $AiProvidersTable, AiProvider> {
+  $$AiProvidersTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$AiModelsTable, List<AiModel>> _aiModelsRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.aiModels,
+    aliasName: $_aliasNameGenerator(db.aiProviders.id, db.aiModels.providerId),
+  );
+
+  $$AiModelsTableProcessedTableManager get aiModelsRefs {
+    final manager = $$AiModelsTableTableManager(
+      $_db,
+      $_db.aiModels,
+    ).filter((f) => f.providerId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_aiModelsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$AiProvidersTableFilterComposer
+    extends Composer<_$AppDatabase, $AiProvidersTable> {
+  $$AiProvidersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get apiBaseUrl => $composableBuilder(
+    column: $table.apiBaseUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get apiPath => $composableBuilder(
+    column: $table.apiPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get apiKey => $composableBuilder(
+    column: $table.apiKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get builtInApiKey => $composableBuilder(
+    column: $table.builtInApiKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customHeaders => $composableBuilder(
+    column: $table.customHeaders,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isBuiltIn => $composableBuilder(
+    column: $table.isBuiltIn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isEnabled => $composableBuilder(
+    column: $table.isEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rateLimit => $composableBuilder(
+    column: $table.rateLimit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get registerUrl => $composableBuilder(
+    column: $table.registerUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get freeQuota => $composableBuilder(
+    column: $table.freeQuota,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> aiModelsRefs(
+    Expression<bool> Function($$AiModelsTableFilterComposer f) f,
+  ) {
+    final $$AiModelsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.aiModels,
+      getReferencedColumn: (t) => t.providerId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AiModelsTableFilterComposer(
+            $db: $db,
+            $table: $db.aiModels,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$AiProvidersTableOrderingComposer
+    extends Composer<_$AppDatabase, $AiProvidersTable> {
+  $$AiProvidersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get apiBaseUrl => $composableBuilder(
+    column: $table.apiBaseUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get apiPath => $composableBuilder(
+    column: $table.apiPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get apiKey => $composableBuilder(
+    column: $table.apiKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get builtInApiKey => $composableBuilder(
+    column: $table.builtInApiKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customHeaders => $composableBuilder(
+    column: $table.customHeaders,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isBuiltIn => $composableBuilder(
+    column: $table.isBuiltIn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isEnabled => $composableBuilder(
+    column: $table.isEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rateLimit => $composableBuilder(
+    column: $table.rateLimit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get registerUrl => $composableBuilder(
+    column: $table.registerUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get freeQuota => $composableBuilder(
+    column: $table.freeQuota,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AiProvidersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AiProvidersTable> {
+  $$AiProvidersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get apiBaseUrl => $composableBuilder(
+    column: $table.apiBaseUrl,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get apiPath =>
+      $composableBuilder(column: $table.apiPath, builder: (column) => column);
+
+  GeneratedColumn<String> get apiKey =>
+      $composableBuilder(column: $table.apiKey, builder: (column) => column);
+
+  GeneratedColumn<String> get builtInApiKey => $composableBuilder(
+    column: $table.builtInApiKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get customHeaders => $composableBuilder(
+    column: $table.customHeaders,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isBuiltIn =>
+      $composableBuilder(column: $table.isBuiltIn, builder: (column) => column);
+
+  GeneratedColumn<bool> get isEnabled =>
+      $composableBuilder(column: $table.isEnabled, builder: (column) => column);
+
+  GeneratedColumn<String> get rateLimit =>
+      $composableBuilder(column: $table.rateLimit, builder: (column) => column);
+
+  GeneratedColumn<String> get registerUrl => $composableBuilder(
+    column: $table.registerUrl,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get freeQuota =>
+      $composableBuilder(column: $table.freeQuota, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  Expression<T> aiModelsRefs<T extends Object>(
+    Expression<T> Function($$AiModelsTableAnnotationComposer a) f,
+  ) {
+    final $$AiModelsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.aiModels,
+      getReferencedColumn: (t) => t.providerId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AiModelsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.aiModels,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$AiProvidersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AiProvidersTable,
+          AiProvider,
+          $$AiProvidersTableFilterComposer,
+          $$AiProvidersTableOrderingComposer,
+          $$AiProvidersTableAnnotationComposer,
+          $$AiProvidersTableCreateCompanionBuilder,
+          $$AiProvidersTableUpdateCompanionBuilder,
+          (AiProvider, $$AiProvidersTableReferences),
+          AiProvider,
+          PrefetchHooks Function({bool aiModelsRefs})
+        > {
+  $$AiProvidersTableTableManager(_$AppDatabase db, $AiProvidersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AiProvidersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AiProvidersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AiProvidersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> apiBaseUrl = const Value.absent(),
+                Value<String> apiPath = const Value.absent(),
+                Value<String> apiKey = const Value.absent(),
+                Value<String> builtInApiKey = const Value.absent(),
+                Value<String> customHeaders = const Value.absent(),
+                Value<bool> isBuiltIn = const Value.absent(),
+                Value<bool> isEnabled = const Value.absent(),
+                Value<String?> rateLimit = const Value.absent(),
+                Value<String?> registerUrl = const Value.absent(),
+                Value<String?> freeQuota = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AiProvidersCompanion(
+                id: id,
+                name: name,
+                apiBaseUrl: apiBaseUrl,
+                apiPath: apiPath,
+                apiKey: apiKey,
+                builtInApiKey: builtInApiKey,
+                customHeaders: customHeaders,
+                isBuiltIn: isBuiltIn,
+                isEnabled: isEnabled,
+                rateLimit: rateLimit,
+                registerUrl: registerUrl,
+                freeQuota: freeQuota,
+                sortOrder: sortOrder,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String apiBaseUrl,
+                Value<String> apiPath = const Value.absent(),
+                Value<String> apiKey = const Value.absent(),
+                Value<String> builtInApiKey = const Value.absent(),
+                Value<String> customHeaders = const Value.absent(),
+                Value<bool> isBuiltIn = const Value.absent(),
+                Value<bool> isEnabled = const Value.absent(),
+                Value<String?> rateLimit = const Value.absent(),
+                Value<String?> registerUrl = const Value.absent(),
+                Value<String?> freeQuota = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AiProvidersCompanion.insert(
+                id: id,
+                name: name,
+                apiBaseUrl: apiBaseUrl,
+                apiPath: apiPath,
+                apiKey: apiKey,
+                builtInApiKey: builtInApiKey,
+                customHeaders: customHeaders,
+                isBuiltIn: isBuiltIn,
+                isEnabled: isEnabled,
+                rateLimit: rateLimit,
+                registerUrl: registerUrl,
+                freeQuota: freeQuota,
+                sortOrder: sortOrder,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$AiProvidersTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({aiModelsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (aiModelsRefs) db.aiModels],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (aiModelsRefs)
+                    await $_getPrefetchedData<
+                      AiProvider,
+                      $AiProvidersTable,
+                      AiModel
+                    >(
+                      currentTable: table,
+                      referencedTable: $$AiProvidersTableReferences
+                          ._aiModelsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$AiProvidersTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).aiModelsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.providerId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$AiProvidersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AiProvidersTable,
+      AiProvider,
+      $$AiProvidersTableFilterComposer,
+      $$AiProvidersTableOrderingComposer,
+      $$AiProvidersTableAnnotationComposer,
+      $$AiProvidersTableCreateCompanionBuilder,
+      $$AiProvidersTableUpdateCompanionBuilder,
+      (AiProvider, $$AiProvidersTableReferences),
+      AiProvider,
+      PrefetchHooks Function({bool aiModelsRefs})
+    >;
+typedef $$AiModelsTableCreateCompanionBuilder =
+    AiModelsCompanion Function({
+      required String id,
+      required String providerId,
+      required String modelId,
+      required String name,
+      Value<String> type,
+      Value<bool> isBuiltIn,
+      Value<bool> isEnabled,
+      Value<int> sortOrder,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AiModelsTableUpdateCompanionBuilder =
+    AiModelsCompanion Function({
+      Value<String> id,
+      Value<String> providerId,
+      Value<String> modelId,
+      Value<String> name,
+      Value<String> type,
+      Value<bool> isBuiltIn,
+      Value<bool> isEnabled,
+      Value<int> sortOrder,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$AiModelsTableReferences
+    extends BaseReferences<_$AppDatabase, $AiModelsTable, AiModel> {
+  $$AiModelsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $AiProvidersTable _providerIdTable(_$AppDatabase db) =>
+      db.aiProviders.createAlias(
+        $_aliasNameGenerator(db.aiModels.providerId, db.aiProviders.id),
+      );
+
+  $$AiProvidersTableProcessedTableManager get providerId {
+    final $_column = $_itemColumn<String>('provider_id')!;
+
+    final manager = $$AiProvidersTableTableManager(
+      $_db,
+      $_db.aiProviders,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_providerIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$AiModelsTableFilterComposer
+    extends Composer<_$AppDatabase, $AiModelsTable> {
+  $$AiModelsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get modelId => $composableBuilder(
+    column: $table.modelId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isBuiltIn => $composableBuilder(
+    column: $table.isBuiltIn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isEnabled => $composableBuilder(
+    column: $table.isEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$AiProvidersTableFilterComposer get providerId {
+    final $$AiProvidersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.providerId,
+      referencedTable: $db.aiProviders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AiProvidersTableFilterComposer(
+            $db: $db,
+            $table: $db.aiProviders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AiModelsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AiModelsTable> {
+  $$AiModelsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get modelId => $composableBuilder(
+    column: $table.modelId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isBuiltIn => $composableBuilder(
+    column: $table.isBuiltIn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isEnabled => $composableBuilder(
+    column: $table.isEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$AiProvidersTableOrderingComposer get providerId {
+    final $$AiProvidersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.providerId,
+      referencedTable: $db.aiProviders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AiProvidersTableOrderingComposer(
+            $db: $db,
+            $table: $db.aiProviders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AiModelsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AiModelsTable> {
+  $$AiModelsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get modelId =>
+      $composableBuilder(column: $table.modelId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<bool> get isBuiltIn =>
+      $composableBuilder(column: $table.isBuiltIn, builder: (column) => column);
+
+  GeneratedColumn<bool> get isEnabled =>
+      $composableBuilder(column: $table.isEnabled, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$AiProvidersTableAnnotationComposer get providerId {
+    final $$AiProvidersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.providerId,
+      referencedTable: $db.aiProviders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AiProvidersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.aiProviders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AiModelsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AiModelsTable,
+          AiModel,
+          $$AiModelsTableFilterComposer,
+          $$AiModelsTableOrderingComposer,
+          $$AiModelsTableAnnotationComposer,
+          $$AiModelsTableCreateCompanionBuilder,
+          $$AiModelsTableUpdateCompanionBuilder,
+          (AiModel, $$AiModelsTableReferences),
+          AiModel,
+          PrefetchHooks Function({bool providerId})
+        > {
+  $$AiModelsTableTableManager(_$AppDatabase db, $AiModelsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AiModelsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AiModelsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AiModelsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> providerId = const Value.absent(),
+                Value<String> modelId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<bool> isBuiltIn = const Value.absent(),
+                Value<bool> isEnabled = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AiModelsCompanion(
+                id: id,
+                providerId: providerId,
+                modelId: modelId,
+                name: name,
+                type: type,
+                isBuiltIn: isBuiltIn,
+                isEnabled: isEnabled,
+                sortOrder: sortOrder,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String providerId,
+                required String modelId,
+                required String name,
+                Value<String> type = const Value.absent(),
+                Value<bool> isBuiltIn = const Value.absent(),
+                Value<bool> isEnabled = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AiModelsCompanion.insert(
+                id: id,
+                providerId: providerId,
+                modelId: modelId,
+                name: name,
+                type: type,
+                isBuiltIn: isBuiltIn,
+                isEnabled: isEnabled,
+                sortOrder: sortOrder,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$AiModelsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({providerId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (providerId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.providerId,
+                                referencedTable: $$AiModelsTableReferences
+                                    ._providerIdTable(db),
+                                referencedColumn: $$AiModelsTableReferences
+                                    ._providerIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$AiModelsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AiModelsTable,
+      AiModel,
+      $$AiModelsTableFilterComposer,
+      $$AiModelsTableOrderingComposer,
+      $$AiModelsTableAnnotationComposer,
+      $$AiModelsTableCreateCompanionBuilder,
+      $$AiModelsTableUpdateCompanionBuilder,
+      (AiModel, $$AiModelsTableReferences),
+      AiModel,
+      PrefetchHooks Function({bool providerId})
+    >;
 typedef $$AppNotificationsTableCreateCompanionBuilder =
     AppNotificationsCompanion Function({
       required String id,
@@ -9709,6 +12092,10 @@ class $AppDatabaseManager {
       $$CategoryAttributesTableTableManager(_db, _db.categoryAttributes);
   $$ItemAttributesTableTableManager get itemAttributes =>
       $$ItemAttributesTableTableManager(_db, _db.itemAttributes);
+  $$AiProvidersTableTableManager get aiProviders =>
+      $$AiProvidersTableTableManager(_db, _db.aiProviders);
+  $$AiModelsTableTableManager get aiModels =>
+      $$AiModelsTableTableManager(_db, _db.aiModels);
   $$AppNotificationsTableTableManager get appNotifications =>
       $$AppNotificationsTableTableManager(_db, _db.appNotifications);
 }

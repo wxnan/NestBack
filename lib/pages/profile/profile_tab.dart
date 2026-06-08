@@ -5,6 +5,7 @@ import '../../providers/house_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/tag_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/ai_provider.dart';
 import '../../utils/app_info.dart';
 import 'attribute_manager_page.dart';
 import 'category_manager_page.dart';
@@ -17,6 +18,7 @@ import 'feedback_page.dart';
 import 'barcode_settings_page.dart';
 import 'import_export_page.dart';
 import 'backup_settings_page.dart';
+import 'ai_settings_page.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
@@ -222,12 +224,18 @@ class ProfileTab extends StatelessWidget {
                   );
                 },
               ),
-              _buildSettingTile(
-                context,
-                icon: Icons.smart_toy,
-                title: 'AI 设置',
-                subtitle: 'LLM API 配置',
-                onTap: () => _showFeatureComingSoon(context, 'AI 设置'),
+              Consumer2<SettingsProvider, AiProviderProvider>(
+                builder: (context, settingsProvider, aiProvider, _) {
+                  return _buildSettingTile(
+                    context,
+                    icon: Icons.smart_toy,
+                    title: 'AI 设置',
+                    subtitle: 'LLM API 配置',
+                    configured: aiProvider.isAiConfigured,
+                    statusText: aiProvider.isAiConfigured ? '已配置' : '未配置',
+                    onTap: () => _showAiSettings(context),
+                  );
+                },
               ),
               Consumer<SettingsProvider>(
                 builder: (context, settingsProvider, _) {
@@ -455,6 +463,15 @@ class ProfileTab extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (context) => const BackupSettingsPage(),
+      ),
+    );
+  }
+
+  void _showAiSettings(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AiSettingsPage(),
       ),
     );
   }

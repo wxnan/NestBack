@@ -13,6 +13,8 @@ class BarcodeSettingsPage extends StatefulWidget {
 
 class _BarcodeSettingsPageState extends State<BarcodeSettingsPage> {
   final _apiKeyController = TextEditingController();
+  bool _obscureApiKey = true;
+  bool _obscureAppSecret = true;
   final _rollapiAppIdController = TextEditingController();
   final _rollapiAppSecretController = TextEditingController();
   final _testBarcodeController = TextEditingController(text: '6921168509256');
@@ -437,19 +439,28 @@ class _BarcodeSettingsPageState extends State<BarcodeSettingsPage> {
             const SizedBox(height: 12),
             TextField(
               controller: _apiKeyController,
+              obscureText: _obscureApiKey,
               decoration: InputDecoration(
                 hintText: isKeyRequired ? '输入 API Key' : '输入 API Key（可选，不填则按 IP 限制）',
                 border: const OutlineInputBorder(),
-                suffixIcon: _apiKeyController.text.isNotEmpty
-                    ? IconButton(
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(_obscureApiKey ? Icons.visibility_off : Icons.visibility, size: 20),
+                      onPressed: () => setState(() => _obscureApiKey = !_obscureApiKey),
+                    ),
+                    if (_apiKeyController.text.isNotEmpty)
+                      IconButton(
                         icon: const Icon(Icons.clear, size: 20),
                         onPressed: () {
                           _apiKeyController.clear();
                           settingsProvider.setBarcodeApiKey(settingsProvider.barcodeApiProvider, '');
                           setState(() {});
                         },
-                      )
-                    : null,
+                      ),
+                  ],
+                ),
               ),
               onChanged: (value) {
                 settingsProvider.setBarcodeApiKey(settingsProvider.barcodeApiProvider, value);
@@ -533,20 +544,29 @@ class _BarcodeSettingsPageState extends State<BarcodeSettingsPage> {
             const SizedBox(height: 12),
             TextField(
               controller: _rollapiAppSecretController,
+              obscureText: _obscureAppSecret,
               decoration: InputDecoration(
                 hintText: '输入 App Secret',
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.lock, size: 20),
-                suffixIcon: _rollapiAppSecretController.text.isNotEmpty
-                    ? IconButton(
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(_obscureAppSecret ? Icons.visibility_off : Icons.visibility, size: 20),
+                      onPressed: () => setState(() => _obscureAppSecret = !_obscureAppSecret),
+                    ),
+                    if (_rollapiAppSecretController.text.isNotEmpty)
+                      IconButton(
                         icon: const Icon(Icons.clear, size: 20),
                         onPressed: () {
                           _rollapiAppSecretController.clear();
                           settingsProvider.setBarcodeApiKey('rollapi', _getRollapiCombinedKey());
                           setState(() {});
                         },
-                      )
-                    : null,
+                      ),
+                  ],
+                ),
               ),
               onChanged: (value) {
                 settingsProvider.setBarcodeApiKey('rollapi', _getRollapiCombinedKey());

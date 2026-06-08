@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'item_form_page.dart';
 import 'barcode_scanner_page.dart';
+import 'ai_vision_scan_page.dart';
 import '../home_page.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/ai_provider.dart';
 
 class AddTab extends StatefulWidget {
   const AddTab({super.key});
@@ -61,7 +63,7 @@ class _AddTabState extends State<AddTab> {
                       'AI识图录入',
                       '拍照或从相册选图，AI自动识别物品信息',
                       const Color(0xFF9356DC),
-                      () => _showFeatureComingSoon(context, 'AI识图'),
+                      () => _navigateToAiVision(context),
                     ),
                     const SizedBox(height: 16),
                     _buildAIInputCard(
@@ -258,6 +260,29 @@ class _AddTabState extends State<AddTab> {
         ),
       );
     }
+  }
+
+  void _navigateToAiVision(BuildContext context) {
+    final aiProvider = context.read<AiProviderProvider>();
+    if (aiProvider.defaultVisionModelId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('请先在"我的 → AI设置"中配置默认识图模型'),
+          action: SnackBarAction(
+            label: '去设置',
+            onPressed: () => Navigator.pushNamed(context, '/ai-settings'),
+          ),
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AiVisionScanPage(),
+      ),
+    );
   }
 
   void _showFeatureComingSoon(BuildContext context, String feature) {

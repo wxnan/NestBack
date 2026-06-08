@@ -130,6 +130,43 @@ class ItemAttributes extends Table {
   Set<Column> get primaryKey => {itemId, attributeId};
 }
 
+class AiProviders extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get apiBaseUrl => text()();
+  TextColumn get apiPath => text().withDefault(const Constant('/chat/completions'))();
+  TextColumn get apiKey => text().withDefault(const Constant(''))();
+  TextColumn get builtInApiKey => text().withDefault(const Constant(''))();
+  TextColumn get customHeaders => text().withDefault(const Constant('{}'))();
+  BoolColumn get isBuiltIn => boolean().withDefault(const Constant(false))();
+  BoolColumn get isEnabled => boolean().withDefault(const Constant(true))();
+  TextColumn get rateLimit => text().nullable()();
+  TextColumn get registerUrl => text().nullable()();
+  TextColumn get freeQuota => text().nullable()();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class AiModels extends Table {
+  TextColumn get id => text()();
+  TextColumn get providerId => text().references(AiProviders, #id)();
+  TextColumn get modelId => text()();
+  TextColumn get name => text()();
+  TextColumn get type => text().withDefault(const Constant('chat'))();
+  BoolColumn get isBuiltIn => boolean().withDefault(const Constant(false))();
+  BoolColumn get isEnabled => boolean().withDefault(const Constant(true))();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 class AppNotifications extends Table {
   TextColumn get id => text()();
   TextColumn get title => text()();
@@ -140,12 +177,12 @@ class AppNotifications extends Table {
   DateTimeColumn get createdAt => dateTime()();
 }
 
-@DriftDatabase(tables: [Houses, Spaces, Items, Categories, Subcategories, Tags, Attributes, CategoryAttributes, ItemAttributes, AppNotifications])
+@DriftDatabase(tables: [Houses, Spaces, Items, Categories, Subcategories, Tags, Attributes, CategoryAttributes, ItemAttributes, AiProviders, AiModels, AppNotifications])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration {
@@ -175,8 +212,45 @@ class AppDatabase extends _$AppDatabase {
           // v7: 分类、属性、标签改为全局共享，去重已有数据
           await _migrateToGlobalMetadata();
         }
+        if (from < 8) {
+          await m.createTable(aiProviders);
+          await m.createTable(aiModels);
+        }
+        if (from < 9) {
+          // v9: AiModels 添加 modelId 列，将已有 name 复制到 modelId
+          await _addColumnIfNotExists('ai_models', 'model_id', 'TEXT NOT NULL DEFAULT \'\'');
+          await customStatement('UPDATE ai_models SET model_id = name WHERE model_id = \'\'');
+        }
+        if (from < 10) {
+          // v10: AiProviders 添加 apiPath 列，默认 /chat/completions
+          await _addColumnIfNotExists('ai_providers', 'api_path', 'TEXT NOT NULL DEFAULT \'/chat/completions\'');
+        }
+        if (from < 11) {
+          // v11: AiModels 添加 sortOrder 列
+          await _addColumnIfNotExists('ai_models', 'sort_order', 'INTEGER NOT NULL DEFAULT 0');
+        }
+        if (from < 12) {
+          // v12: AiProviders 添加 customHeaders 列
+          await _addColumnIfNotExists('ai_providers', 'custom_headers', 'TEXT NOT NULL DEFAULT \'{}\'');
+        }
+        if (from < 13) {
+          // v13: AiProviders 添加 builtInApiKey 列
+          await _addColumnIfNotExists('ai_providers', 'built_in_api_key', 'TEXT NOT NULL DEFAULT \'\'');
+        }
       },
     );
+  }
+
+  /// 安全添加列：先检查列是否存在，不存在才添加（兼容旧版 SQLite）
+  Future<void> _addColumnIfNotExists(String table, String column, String definition) async {
+    final result = await customSelect(
+      'PRAGMA table_info($table)',
+      readsFrom: {aiProviders, aiModels},
+    ).get();
+    final exists = result.any((row) => row.read<String>('name') == column);
+    if (!exists) {
+      await customStatement('ALTER TABLE $table ADD COLUMN $column $definition;');
+    }
   }
 
   /// v7 迁移：去重分类、属性、标签数据，使其全局共享

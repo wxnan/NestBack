@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:archive/archive.dart';
 import 'package:encrypt/encrypt.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -137,9 +136,10 @@ class WebDavBackupService {
     final zipBytes = await zipFile.readAsBytes();
 
     // 生成远程文件名
-    final timestamp = _formatTimestamp(DateTime.now());
-    final remoteFileName = 'nestback_backup_$timestamp.zip';
-    final remoteFilePath = p.join(houseBackupPath, remoteFileName).replaceAll('\\', '/');
+      final timestamp = _formatTimestamp(DateTime.now());
+      final suffix = (_encryptionKey != null && _encryptionKey!.isNotEmpty) ? '.zip.enc' : '.zip';
+      final remoteFileName = 'nestback_backup_$timestamp$suffix';
+      final remoteFilePath = p.join(houseBackupPath, remoteFileName).replaceAll('\\', '/');
 
     // 上传到WebDAV
     if (_encryptionKey != null && _encryptionKey!.isNotEmpty) {
@@ -241,7 +241,7 @@ class WebDavBackupService {
       
       final files = await _client!.readDir(houseBackupPath);
       final backups = files
-          .where((f) => f.name?.endsWith('.zip') ?? false)
+          .where((f) => (f.name?.endsWith('.zip') ?? false) || (f.name?.endsWith('.zip.enc') ?? false))
           .where((f) => f.name?.startsWith('nestback_backup_') ?? false)
           .map((f) => BackupFileInfo(
                 name: f.name!,
@@ -249,6 +249,7 @@ class WebDavBackupService {
                 size: f.size ?? 0,
                 modifiedTime: f.mTime ?? DateTime.now(),
                 houseName: houseName,
+                isEncrypted: f.name!.endsWith('.zip.enc'),
               ))
           .toList();
 
@@ -273,6 +274,11 @@ class WebDavBackupService {
       
       for (final f in files) {
         if (f.isDir ?? false) {
+          // 过滤掉设置备份文件夹
+          if (f.name == '设置') {
+            continue;
+          }
+          
           String displayName = f.name!;
           DateTime? createdAt;
           
@@ -363,6 +369,7 @@ class BackupFileInfo {
   final int size;
   final DateTime modifiedTime;
   final String houseName;
+  final bool isEncrypted;
 
   BackupFileInfo({
     required this.name,
@@ -370,6 +377,7 @@ class BackupFileInfo {
     required this.size,
     required this.modifiedTime,
     required this.houseName,
+    this.isEncrypted = false,
   });
 
   String get formattedSize {
