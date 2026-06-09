@@ -95,6 +95,16 @@ class AttributeProvider extends ChangeNotifier {
     await loadAttributes();
   }
 
+  Future<void> updateAttributeOptions(String attributeId, String newOptions) async {
+    await (_db.update(_db.attributes)..where((t) => t.id.equals(attributeId))).write(
+      AttributesCompanion(
+        options: Value(newOptions),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+    await loadAttributes();
+  }
+
   Future<void> reorderAttributes(int oldIndex, int newIndex) async {
     if (oldIndex < newIndex) {
       newIndex -= 1;

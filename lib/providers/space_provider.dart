@@ -95,10 +95,11 @@ class SpaceProvider extends ChangeNotifier {
     String? parentId,
     String? icon,
     String? imagePath,
+    String? defaultCategoryId,
   }) async {
     final now = DateTime.now();
     final id = const Uuid().v4();
-    
+
     // 计算新空间的 position：当前层级最大 position + 1
     final siblings = parentId == null
         ? _spaces.where((s) =>
@@ -108,7 +109,7 @@ class SpaceProvider extends ChangeNotifier {
             s.type != 'trash' &&
             s.type != 'recycle').toList()
         : _spaces.where((s) => s.parentId == parentId).toList();
-    
+
     String? position;
     if (siblings.isEmpty) {
       position = '0';
@@ -118,7 +119,7 @@ class SpaceProvider extends ChangeNotifier {
           .reduce((a, b) => a > b ? a : b);
       position = '${maxPosition + 1}';
     }
-    
+
     await _db.into(_db.spaces).insert(SpacesCompanion.insert(
       id: id,
       houseId: houseId,
@@ -128,6 +129,7 @@ class SpaceProvider extends ChangeNotifier {
       parentId: Value(parentId),
       type: parentId == null ? 'room' : 'container',
       position: Value(position),
+      defaultCategoryId: Value(defaultCategoryId),
       createdAt: now,
       updatedAt: now,
     ));
@@ -139,12 +141,14 @@ class SpaceProvider extends ChangeNotifier {
     String? newName,
     String? newIcon,
     String? newImagePath,
+    String? defaultCategoryId,
   }) async {
     await (_db.update(_db.spaces)..where((t) => t.id.equals(space.id))).write(
       SpacesCompanion(
         name: newName != null ? Value(newName) : const Value.absent(),
         icon: newIcon != null ? Value(newIcon) : const Value.absent(),
         imagePath: newImagePath != null ? Value(newImagePath) : const Value.absent(),
+        defaultCategoryId: defaultCategoryId != null ? Value(defaultCategoryId) : const Value.absent(),
         updatedAt: Value(DateTime.now()),
       ),
     );

@@ -157,6 +157,7 @@ class ImportExportService {
         parentId: Value(mappedParentId),
         type: s['type'] as String,
         position: Value(s['position'] as String?),
+        defaultCategoryId: Value(s['defaultCategoryId'] as String?),
         createdAt: _parseDateTime(s['createdAt']) ?? now,
         updatedAt: now,
       ));
@@ -1079,6 +1080,7 @@ class ImportExportService {
         'parentId': s.parentId,
         'type': s.type,
         'position': s.position,
+        'defaultCategoryId': s.defaultCategoryId,
         'createdAt': s.createdAt.toIso8601String(),
         'updatedAt': s.updatedAt.toIso8601String(),
       };

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:collection/collection.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -241,23 +242,32 @@ class _ItemFormPageState extends State<ItemFormPage> {
       }
     }
 
-    // 匹配二级分类
+    // 匹配二级分类，不存在则自动创建
     if (result.subcategory.isNotEmpty && _selectedCategoryId != null) {
       final subcategories = categoryProvider.getSubcategoriesForCategory(_selectedCategoryId!);
-      final matchedSub = subcategories.firstWhere(
+      final matchedSub = subcategories.firstWhereOrNull(
         (s) => s.name == result.subcategory,
-        orElse: () => Subcategory(
-          id: '',
-          categoryId: '',
-          name: '',
-          sortOrder: 0,
-          createdAt: DateTime.now(),
-        ),
       );
-      if (matchedSub.id.isNotEmpty) {
+      if (matchedSub != null) {
         setState(() {
           _selectedSubcategoryId = matchedSub.id;
         });
+      } else {
+        // 自动创建新的二级分类
+        final currentHouse = context.read<HouseProvider>().currentHouse;
+        if (currentHouse != null) {
+          await categoryProvider.addSubcategory(
+            categoryId: _selectedCategoryId!,
+            name: result.subcategory,
+          );
+          final newSubs = categoryProvider.getSubcategoriesForCategory(_selectedCategoryId!);
+          final newSub = newSubs.firstWhereOrNull((s) => s.name == result.subcategory);
+          if (newSub != null) {
+            setState(() {
+              _selectedSubcategoryId = newSub.id;
+            });
+          }
+        }
       }
     }
 
@@ -437,11 +447,11 @@ class _ItemFormPageState extends State<ItemFormPage> {
             const SizedBox(height: 16),
             _buildNameField(),
             const SizedBox(height: 16),
+            _buildLocationSelector(),
+            const SizedBox(height: 16),
             _buildCategorySelector(),
             const SizedBox(height: 16),
             _buildSubcategorySelector(),
-            const SizedBox(height: 16),
-            _buildLocationSelector(),
             const SizedBox(height: 16),
             _buildQuantitySection(),
             const SizedBox(height: 16),
@@ -566,48 +576,39 @@ class _ItemFormPageState extends State<ItemFormPage> {
   Widget _buildCategorySelector() {
     return Consumer2<CategoryProvider, HouseProvider>(
       builder: (context, categoryProvider, houseProvider, _) {
-        return DropdownButtonFormField<String>(
-          value: _selectedCategory,
-          decoration: InputDecoration(
-            labelText: '分类 *',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            prefixIcon: const Icon(Icons.category),
-          ),
-          items: [
-            ...categoryProvider.categories.map((category) {
-              return DropdownMenuItem<String>(
-                value: category.name,
-                child: Text(category.name),
-              );
-            }),
-          ],
-          onChanged: (value) {
-            setState(() {
-              if (value != null && value != _selectedCategory) {
-                _selectedSubcategoryId = null;
-              }
-              _selectedCategory = value;
-              final currentHouse = houseProvider.currentHouse;
-              if (currentHouse != null && value != null) {
-                final category = categoryProvider.categories.firstWhere(
-                  (c) => c.name == value,
-                  orElse: () => Category(id: '', houseId: currentHouse.id, name: '其他', icon: null, sortOrder: 0, createdAt: DateTime.now()),
+        final currentHouse = houseProvider.currentHouse;
+        if (currentHouse == null) return const SizedBox();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('分类 *', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: categoryProvider.categories.map((category) {
+                final isSelected = _selectedCategory == category.name;
+                return FilterChip(
+                  label: Text(category.name),
+                  selected: isSelected,
+                  showCheckmark: false,
+                  onSelected: (selected) {
+                    setState(() {
+                      if (selected) {
+                        if (category.name != _selectedCategory) {
+                          _selectedSubcategoryId = null;
+                        }
+                        _selectedCategory = category.name;
+                        _selectedCategoryId = category.id;
+                        categoryProvider.loadSubcategories(category.id);
+                      }
+                    });
+                  },
                 );
-                _selectedCategoryId = category.id;
-                if (category.id.isNotEmpty) {
-                  categoryProvider.loadSubcategories(category.id);
-                }
-              }
-            });
-          },
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return '请选择分类';
-            }
-            return null;
-          },
+              }).toList(),
+            ),
+          ],
         );
       },
     );
@@ -616,64 +617,68 @@ class _ItemFormPageState extends State<ItemFormPage> {
   Widget _buildSubcategorySelector() {
     return Consumer2<CategoryProvider, HouseProvider>(
       builder: (context, categoryProvider, houseProvider, _) {
-        final currentHouse = houseProvider.currentHouse;
-        
         if (_selectedCategoryId == null || _selectedCategoryId!.isEmpty) {
-          return TextFormField(
-            enabled: false,
-            decoration: InputDecoration(
-              labelText: '二级分类（选填）',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              prefixIcon: const Icon(Icons.category_outlined),
-              hintText: '请先选择分类',
-            ),
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('二级分类（选填）', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              const SizedBox(height: 8),
+              Text('请先选择分类', style: TextStyle(color: Colors.grey[400], fontSize: 13)),
+            ],
           );
         }
 
         final subcategories = categoryProvider.getSubcategoriesForCategory(_selectedCategoryId!);
-        final validValue = subcategories.any((s) => s.id == _selectedSubcategoryId)
-            ? _selectedSubcategoryId
-            : null;
 
-        return DropdownButtonFormField<String>(
-          value: validValue,
-          decoration: InputDecoration(
-            labelText: '二级分类（选填）',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text('二级分类（选填）', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () async {
+                    final newName = await _showAddSubcategoryDialog(context, categoryProvider, houseProvider.currentHouse);
+                    if (newName != null && newName.isNotEmpty) {
+                      // Auto-select the newly added subcategory
+                      final subs = categoryProvider.getSubcategoriesForCategory(_selectedCategoryId!);
+                      final newSub = subs.firstWhereOrNull((s) => s.name == newName);
+                      setState(() {
+                        _selectedSubcategoryId = newSub?.id;
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('添加'),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ],
             ),
-            prefixIcon: const Icon(Icons.category_outlined),
-          ),
-          items: [
-            const DropdownMenuItem<String>(
-              value: '',
-              child: Text('不选择'),
-            ),
-            ...subcategories.map((subcategory) {
-              return DropdownMenuItem<String>(
-                value: subcategory.id,
-                child: Text(subcategory.name),
-              );
-            }),
-            const DropdownMenuItem<String>(
-              value: '_add_new',
-              child: Text('+ 添加新二级分类'),
-            ),
+            const SizedBox(height: 8),
+            if (subcategories.isEmpty)
+              Text('暂无二级分类', style: TextStyle(color: Colors.grey[400], fontSize: 13))
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: subcategories.map((subcategory) {
+                  final isSelected = _selectedSubcategoryId == subcategory.id;
+                  return FilterChip(
+                    label: Text(subcategory.name),
+                    selected: isSelected,
+                    showCheckmark: false,
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedSubcategoryId = selected ? subcategory.id : null;
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
           ],
-          onChanged: (value) async {
-            if (value == '_add_new') {
-              final newName = await _showAddSubcategoryDialog(context, categoryProvider, currentHouse);
-              if (newName != null && newName.isNotEmpty) {
-                setState(() {});
-              }
-            } else {
-              setState(() {
-                _selectedSubcategoryId = (value != null && value.isNotEmpty) ? value : null;
-              });
-            }
-          },
         );
       },
     );
@@ -741,63 +746,197 @@ class _ItemFormPageState extends State<ItemFormPage> {
 
         if (spaces.isEmpty) {
           return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('暂无可选空间，请先创建空间'),
+              Text('位置 *', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
               const SizedBox(height: 8),
-              TextFormField(
-                enabled: false,
-                decoration: InputDecoration(
-                  labelText: '位置 *',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  hintText: '暂无可用空间',
-                ),
-                validator: (_) => '请先创建空间',
-              ),
+              Text('暂无可选空间，请先创建空间', style: TextStyle(color: Colors.grey[400])),
             ],
           );
         }
 
-        String? defaultSpaceId = _selectedSpaceId;
-        if (defaultSpaceId == null) {
+        // Set default space if not selected
+        if (_selectedSpaceId == null) {
           final pendingSpace = spaceProvider.getPendingSpace(currentHouse.id);
-          if (pendingSpace != null) {
-            defaultSpaceId = pendingSpace.id;
-          } else {
-            defaultSpaceId = spaces.first.id;
-          }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _selectedSpaceId == null) {
+              setState(() {
+                _selectedSpaceId = pendingSpace?.id ?? spaces.first.id;
+              });
+            }
+          });
         }
 
-        return DropdownButtonFormField<String>(
-          value: defaultSpaceId,
-          decoration: InputDecoration(
-            labelText: '位置 *',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+        final selectedSpace = _selectedSpaceId != null
+            ? spaceProvider.getSpaceById(_selectedSpaceId)
+            : null;
+        final spacePath = selectedSpace != null
+            ? spaceProvider.getSpacePath(selectedSpace, includeSelf: true)
+            : '请选择位置';
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('位置 *', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: () => _showSpacePickerBottomSheet(spaceProvider, currentHouse.id),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.place, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        spacePath,
+                        style: TextStyle(
+                          color: selectedSpace != null ? null : Colors.grey,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.arrow_drop_down),
+                  ],
+                ),
+              ),
             ),
-            prefixIcon: const Icon(Icons.place),
-          ),
-          items: spaces.map((space) {
-            return DropdownMenuItem<String>(
-              value: space.id,
-              child: Text(space.name),
-            );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedSpaceId = value;
-            });
-          },
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return '请选择存放位置';
-            }
-            return null;
-          },
+          ],
         );
       },
     );
+  }
+
+  void _showSpacePickerBottomSheet(SpaceProvider spaceProvider, String houseId) {
+    final allSpaces = spaceProvider.getAllSpacesExceptSpecial(houseId);
+    final pendingSpace = spaceProvider.getPendingSpace(houseId);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        minChildSize: 0.3,
+        maxChildSize: 0.8,
+        expand: false,
+        builder: (context, scrollController) => Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  const Text('选择位置', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView(
+                controller: scrollController,
+                padding: const EdgeInsets.all(8),
+                children: [
+                  if (pendingSpace != null)
+                    ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.only(left: 16, right: 16),
+                      leading: Icon(
+                        _selectedSpaceId == pendingSpace.id ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                        color: _selectedSpaceId == pendingSpace.id ? Theme.of(context).colorScheme.primary : Colors.grey,
+                      ),
+                      title: Text(
+                        '待整理',
+                        style: TextStyle(
+                          fontWeight: _selectedSpaceId == pendingSpace.id ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                      trailing: const Icon(Icons.inbox, size: 18, color: Colors.grey),
+                      onTap: () {
+                        setState(() {
+                          _selectedSpaceId = pendingSpace.id;
+                          _onSpaceChanged(pendingSpace);
+                        });
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ..._buildSpaceTreeItems(allSpaces, null, spaceProvider, 0, context),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildSpaceTreeItems(List<Space> allSpaces, String? parentId, SpaceProvider spaceProvider, int level, BuildContext sheetContext) {
+    final children = allSpaces.where((s) => s.parentId == parentId).toList();
+    return children.map((space) {
+      final subChildren = allSpaces.where((s) => s.parentId == space.id).toList();
+      final isSelected = _selectedSpaceId == space.id;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.only(left: 16.0 * level + 16, right: 16),
+            leading: Icon(
+              isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+              color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey,
+            ),
+            title: Text(
+              space.name,
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            trailing: subChildren.isNotEmpty
+                ? const Icon(Icons.folder, size: 18, color: Colors.grey)
+                : null,
+            onTap: () {
+              setState(() {
+                _selectedSpaceId = space.id;
+                _onSpaceChanged(space);
+              });
+              Navigator.pop(sheetContext);
+            },
+          ),
+          ..._buildSpaceTreeItems(allSpaces, space.id, spaceProvider, level + 1, sheetContext),
+        ],
+      );
+    }).toList();
+  }
+
+  void _onSpaceChanged(Space space) {
+    // Auto-fill category from space's default category
+    if (space.defaultCategoryId != null && space.defaultCategoryId!.isNotEmpty) {
+      final categoryProvider = context.read<CategoryProvider>();
+      final currentCategory = _selectedCategory;
+      // Only auto-fill if current category is "其他"
+      if (currentCategory == '其他' || currentCategory == null) {
+        final defaultCategory = categoryProvider.categories
+            .where((c) => c.id == space.defaultCategoryId)
+            .firstOrNull;
+        if (defaultCategory != null) {
+          setState(() {
+            _selectedCategory = defaultCategory.name;
+            _selectedCategoryId = defaultCategory.id;
+            _selectedSubcategoryId = null;
+          });
+          categoryProvider.loadSubcategories(defaultCategory.id);
+        }
+      }
+    }
   }
 
   Widget _buildQuantitySection() {
@@ -1008,70 +1147,44 @@ class _ItemFormPageState extends State<ItemFormPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('标签（选填）'),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            Row(
               children: [
-                ..._selectedTags.map((tagName) {
-                  return Chip(
-                    label: Text(tagName),
-                    deleteIcon: const Icon(Icons.close, size: 16),
-                    onDeleted: () {
-                      setState(() {
-                        _selectedTags.remove(tagName);
-                      });
-                    },
-                  );
-                }).toList(),
-                InkWell(
-                  onTap: () => _showAddTagDialog(tagProvider, currentHouse),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey[300]!),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.add, size: 16),
-                        SizedBox(width: 4),
-                        Text('添加标签'),
-                      ],
-                    ),
+                Text('标签（选填）', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () => _showAddTagDialog(tagProvider, currentHouse),
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('添加'),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
                   ),
                 ),
               ],
             ),
-            if (tags.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              const Text('已有标签'),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: tags.map((tag) {
-                  final isSelected = _selectedTags.contains(tag.name);
-                  return FilterChip(
-                    label: Text(tag.name),
-                    selected: isSelected,
-                    showCheckmark: false,
-                    onSelected: (selected) {
-                      setState(() {
-                        if (selected) {
-                          if (!_selectedTags.contains(tag.name)) {
-                            _selectedTags.add(tag.name);
-                          }
-                        } else {
-                          _selectedTags.remove(tag.name);
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: tags.map((tag) {
+                final isSelected = _selectedTags.contains(tag.name);
+                return FilterChip(
+                  label: Text(tag.name),
+                  selected: isSelected,
+                  showCheckmark: false,
+                  onSelected: (selected) {
+                    setState(() {
+                      if (selected) {
+                        if (!_selectedTags.contains(tag.name)) {
+                          _selectedTags.add(tag.name);
                         }
-                      });
-                    },
-                  );
-                }).toList(),
-              ),
-            ],
+                      } else {
+                        _selectedTags.remove(tag.name);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
+            ),
           ],
         );
       },
@@ -1269,36 +1382,14 @@ class _ItemFormPageState extends State<ItemFormPage> {
           ),
         );
       case 'select':
-        return DropdownButtonFormField<String>(
-          value: currentValue.isNotEmpty ? currentValue : null,
-          decoration: InputDecoration(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          items: [
-            const DropdownMenuItem<String>(
-              value: '',
-              child: Text('请选择'),
-            ),
-            ...options.map((opt) => DropdownMenuItem<String>(
-                  value: opt,
-                  child: Text(opt),
-                )),
-          ],
-          onChanged: (value) {
-            setState(() {
-              _customAttributes[attribute.id] = value ?? '';
-            });
-          },
-        );
-      case 'multi_select':
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Wrap(
               spacing: 8,
+              runSpacing: 8,
               children: options.map((opt) {
-                final isSelected = currentValue.contains(opt);
+                final isSelected = currentValue == opt;
                 return FilterChip(
                   label: Text(opt),
                   selected: isSelected,
@@ -1306,27 +1397,65 @@ class _ItemFormPageState extends State<ItemFormPage> {
                   onSelected: (selected) {
                     setState(() {
                       if (selected) {
-                        if (currentValue.isEmpty) {
-                          _customAttributes[attribute.id] = opt;
-                        } else if (!currentValue.contains(opt)) {
-                          _customAttributes[attribute.id] = '$currentValue;$opt';
-                        }
+                        _customAttributes[attribute.id] = opt;
                       } else {
-                        if (currentValue.contains(';$opt')) {
-                          _customAttributes[attribute.id] = currentValue.replaceAll(';$opt', '');
-                        } else if (currentValue.contains('$opt;')) {
-                          _customAttributes[attribute.id] = currentValue.replaceAll('$opt;', '');
-                        } else {
-                          _customAttributes[attribute.id] = currentValue.replaceAll(opt, '');
-                        }
-                        if (_customAttributes[attribute.id]!.isEmpty) {
-                          _customAttributes.remove(attribute.id);
-                        }
+                        _customAttributes.remove(attribute.id);
                       }
                     });
                   },
                 );
               }).toList(),
+            ),
+            const SizedBox(height: 4),
+            TextButton.icon(
+              onPressed: () => _showAddAttributeOptionDialog(attribute),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('添加选项'),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ],
+        );
+      case 'multi_select':
+        final selectedValues = currentValue.isNotEmpty ? currentValue.split(';') : <String>[];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: options.map((opt) {
+                final isSelected = selectedValues.contains(opt);
+                return FilterChip(
+                  label: Text(opt),
+                  selected: isSelected,
+                  showCheckmark: false,
+                  onSelected: (selected) {
+                    setState(() {
+                      if (selected) {
+                        selectedValues.add(opt);
+                      } else {
+                        selectedValues.remove(opt);
+                      }
+                      if (selectedValues.isNotEmpty) {
+                        _customAttributes[attribute.id] = selectedValues.join(';');
+                      } else {
+                        _customAttributes.remove(attribute.id);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 4),
+            TextButton.icon(
+              onPressed: () => _showAddAttributeOptionDialog(attribute),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('添加选项'),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+              ),
             ),
           ],
         );
@@ -1341,6 +1470,51 @@ class _ItemFormPageState extends State<ItemFormPage> {
           maxLines: 1,
           onChanged: (value) => _customAttributes[attribute.id] = value,
         );
+    }
+  }
+
+  Future<void> _showAddAttributeOptionDialog(Attribute attribute) async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('添加${attribute.name}选项'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: '选项名称',
+            hintText: '请输入选项名称',
+          ),
+          autofocus: true,
+          onSubmitted: (value) {
+            if (value.trim().isNotEmpty) {
+              Navigator.pop(context, value.trim());
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                Navigator.pop(context, controller.text.trim());
+              }
+            },
+            child: const Text('添加'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      final attributeProvider = context.read<AttributeProvider>();
+      final currentOptions = attribute.options ?? '';
+      final newOptions = currentOptions.isEmpty ? result : '$currentOptions;$result';
+      await attributeProvider.updateAttributeOptions(attribute.id, newOptions);
+      setState(() {});
     }
   }
 

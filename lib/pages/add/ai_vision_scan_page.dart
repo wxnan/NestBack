@@ -397,16 +397,27 @@ class _AiVisionScanPageState extends State<AiVisionScanPage> {
         } catch (_) {}
       }
 
-      // 获取用户分类列表
+      // 获取用户分类列表及二级分类
       final categoryProvider = context.read<CategoryProvider>();
       final categoryNames = categoryProvider.categories.map((c) => c.name).toList();
       final categoryList = categoryNames.isNotEmpty ? categoryNames.join('/') : '食品/药品/美妆/日用品/数码/其他';
+
+      // 构建分类-二级分类映射
+      final categorySubcategoryMap = <String, List<String>>{};
+      for (final category in categoryProvider.categories) {
+        final subs = categoryProvider.getSubcategoriesForCategory(category.id);
+        categorySubcategoryMap[category.name] = subs.map((s) => s.name).toList();
+      }
+      final subcategoryInfo = categorySubcategoryMap.entries
+          .where((e) => e.value.isNotEmpty)
+          .map((e) => '${e.key}: ${e.value.join('/')}')
+          .join('\n');
 
       final prompt = '请识别图片中的物品，并以JSON格式返回以下信息（不要返回任何其他内容，只返回JSON）：\n'
           '{\n'
           '  "name": "物品名称",\n'
           '  "category": "分类（$categoryList 之一）",\n'
-          '  "subcategory": "二级分类（如无则为空字符串）",\n'
+          '  "subcategory": "二级分类（可参考已有二级分类，也可返回新的二级分类。已有二级分类参考：$subcategoryInfo 。）",\n'
           '  "brand": "品牌（如无则为空字符串）",\n'
           '  "manufacturer": "厂商（如无则为空字符串）",\n'
           '  "spec": "规格（如无则为空字符串）",\n'

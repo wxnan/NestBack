@@ -198,19 +198,63 @@ class CategoryProvider extends ChangeNotifier {
     await _createDefaultAttributes(houseId, id, categoryType);
   }
 
-  Future<void> updateCategory(db.Category category, String newName) async {
+  Future<void> updateCategory(db.Category category, String newName, {String? newIcon}) async {
     if (await isCategoryNameExists(newName, excludeId: category.id)) {
       return;
     }
     await (_db.update(_db.categories)
             ..where((t) => t.id.equals(category.id)))
-        .write(db.CategoriesCompanion(name: Value(newName)));
+        .write(db.CategoriesCompanion(
+          name: Value(newName),
+          icon: newIcon != null ? Value(newIcon) : const Value.absent(),
+        ));
+    await loadCategories();
+  }
+
+  Future<void> updateCategoryIcon(db.Category category, String? newIcon) async {
+    await (_db.update(_db.categories)
+            ..where((t) => t.id.equals(category.id)))
+        .write(db.CategoriesCompanion(icon: Value(newIcon)));
     await loadCategories();
   }
 
   Future<void> deleteCategory(db.Category category) async {
+    // Find the "其他" category
+    final otherCategories = await (_db.select(_db.categories)
+          ..where((t) => t.name.equals('其他')))
+        .get();
+    final otherCategory = otherCategories.isNotEmpty ? otherCategories.first : null;
+
+    // Migrate items to "其他" category
+    if (otherCategory != null) {
+      final items = await (_db.select(_db.items)
+            ..where((t) => t.categoryId.equals(category.id)))
+          .get();
+      for (final item in items) {
+        await (_db.update(_db.items)..where((t) => t.id.equals(item.id))).write(
+          db.ItemsCompanion(
+            category: Value('其他'),
+            categoryId: Value(otherCategory.id),
+            subcategoryId: const Value(null),
+          ),
+        );
+      }
+    }
+
+    // Delete subcategories
+    await (_db.delete(_db.subcategories)..where((t) => t.categoryId.equals(category.id))).go();
+    // Delete category-attribute associations
+    await (_db.delete(_db.categoryAttributes)..where((t) => t.categoryId.equals(category.id))).go();
+    // Delete the category
     await (_db.delete(_db.categories)..where((t) => t.id.equals(category.id))).go();
     await loadCategories();
+  }
+
+  Future<bool> isCategoryUsedByItems(String categoryId) async {
+    final items = await (_db.select(_db.items)
+          ..where((t) => t.categoryId.equals(categoryId)))
+        .get();
+    return items.isNotEmpty;
   }
 
   Future<void> reorderCategories(int oldIndex, int newIndex) async {

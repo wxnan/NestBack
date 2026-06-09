@@ -31,11 +31,50 @@ class ItemProvider extends ChangeNotifier {
     _items = await (_db.select(_db.items)
           ..where((t) => t.houseId.equals(houseId)))
         .get();
-    
+
+    // 自动修复旧数据：categoryId 为 null 但 category 有值时，补全 categoryId
+    await _fixMissingCategoryIds(houseId);
+
     // 加载所有物品的扩展属性
     await _loadItemAttributes(houseId);
-    
+
     _applyFilters();
+  }
+
+  /// 修复旧数据中 categoryId 为 null 的情况
+  Future<void> _fixMissingCategoryIds(String houseId) async {
+    final itemsNeedFix = _items.where((item) =>
+        (item.categoryId == null || item.categoryId!.isEmpty) &&
+        item.category != null &&
+        item.category!.isNotEmpty,
+    ).toList();
+
+    if (itemsNeedFix.isEmpty) return;
+
+    // 获取当前家庭的所有分类
+    final categories = await (_db.select(_db.categories)
+          ..where((t) => t.houseId.equals(houseId)))
+        .get();
+
+    final categoryNameToId = <String, String>{};
+    for (final cat in categories) {
+      categoryNameToId[cat.name] = cat.id;
+    }
+
+    for (final item in itemsNeedFix) {
+      final categoryName = item.category!;
+      final matchedId = categoryNameToId[categoryName];
+      if (matchedId != null) {
+        await (_db.update(_db.items)..where((t) => t.id.equals(item.id))).write(
+          ItemsCompanion(categoryId: Value(matchedId)),
+        );
+        // 更新内存中的数据
+        final index = _items.indexWhere((i) => i.id == item.id);
+        if (index >= 0) {
+          _items[index] = _items[index].copyWith(categoryId: Value(matchedId));
+        }
+      }
+    }
   }
   
   // 加载物品扩展属性
@@ -247,6 +286,7 @@ class ItemProvider extends ChangeNotifier {
       price: Value(price),
       expireDate: Value(finalExpireDate),
       category: Value(category),
+      categoryId: Value(categoryId),
       subcategoryId: Value(subcategoryId),
       tags: Value(tags?.join(',')),
       imagePath: Value(imagePath),

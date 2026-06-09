@@ -15,6 +15,7 @@ class CategoryManagerPage extends StatefulWidget {
 
 class _CategoryManagerPageState extends State<CategoryManagerPage> {
   late Future<void> _loadFuture;
+  final Map<String, bool> _categoryUsageCache = {};
 
   @override
   void initState() {
@@ -28,7 +29,16 @@ class _CategoryManagerPageState extends State<CategoryManagerPage> {
     final currentHouse = houseProvider.currentHouse;
     if (currentHouse != null) {
       await categoryProvider.loadCategories();
+      await _refreshUsageCache(categoryProvider);
     }
+  }
+
+  Future<void> _refreshUsageCache(CategoryProvider provider) async {
+    _categoryUsageCache.clear();
+    for (final category in provider.categories) {
+      _categoryUsageCache[category.id] = await provider.isCategoryUsedByItems(category.id);
+    }
+    if (mounted) setState(() {});
   }
 
   @override
@@ -46,6 +56,13 @@ class _CategoryManagerPageState extends State<CategoryManagerPage> {
 
           return Consumer<CategoryProvider>(
             builder: (context, provider, _) {
+              // Refresh usage cache when categories change
+              if (_categoryUsageCache.length != provider.categories.length) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _refreshUsageCache(provider);
+                });
+              }
+
               final categories = provider.categories;
 
               if (categories.isEmpty) {
@@ -93,19 +110,18 @@ class _CategoryManagerPageState extends State<CategoryManagerPage> {
   }
 
   Widget _buildCategoryCard(BuildContext context, CategoryProvider provider, Category category) {
-    final isDefault = provider.isDefaultCategory(category.name);
+    final isOther = category.name == '其他';
 
     return Card(
       key: ValueKey(category.id),
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: _buildCategoryIcon(category.name),
+        leading: _buildCategoryIcon(category.name, category.icon),
         title: Text(
           category.name,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
-        subtitle: isDefault ? Text('默认分类', style: TextStyle(color: Colors.grey[600], fontSize: 12)) : null,
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -121,11 +137,23 @@ class _CategoryManagerPageState extends State<CategoryManagerPage> {
               },
               tooltip: '编辑',
             ),
-            if (!isDefault)
+            if (!isOther)
               IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _confirmDeleteCategory(context, provider, category),
-                tooltip: '删除',
+                icon: Icon(
+                  Icons.delete,
+                  color: (_categoryUsageCache[category.id] ?? false) ? Colors.grey : Colors.red,
+                ),
+                onPressed: (_categoryUsageCache[category.id] ?? false)
+                    ? () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('分类"${category.name}"已被物品使用，无法删除'),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    : () => _confirmDeleteCategory(context, provider, category),
+                tooltip: (_categoryUsageCache[category.id] ?? false) ? '该分类已被使用，无法删除' : '删除',
               ),
           ],
         ),
@@ -133,7 +161,7 @@ class _CategoryManagerPageState extends State<CategoryManagerPage> {
     );
   }
 
-  Widget _buildCategoryIcon(String? categoryName) {
+  Widget _buildCategoryIcon(String? categoryName, [String? categoryIcon]) {
     final icons = {
       '食品': Icons.local_dining,
       '药品': Icons.medication,
@@ -296,8 +324,9 @@ class _CategoryManagerPageState extends State<CategoryManagerPage> {
             child: const Text('取消'),
           ),
           FilledButton(
-            onPressed: () {
-              provider.deleteCategory(category);
+            onPressed: () async {
+              await provider.deleteCategory(category);
+              await _refreshUsageCache(provider);
               Navigator.pop(context);
             },
             style: FilledButton.styleFrom(backgroundColor: Colors.red),

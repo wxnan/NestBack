@@ -451,6 +451,18 @@ class $SpacesTable extends Spaces with TableInfo<$SpacesTable, Space> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _defaultCategoryIdMeta = const VerificationMeta(
+    'defaultCategoryId',
+  );
+  @override
+  late final GeneratedColumn<String> defaultCategoryId =
+      GeneratedColumn<String>(
+        'default_category_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -483,6 +495,7 @@ class $SpacesTable extends Spaces with TableInfo<$SpacesTable, Space> {
     parentId,
     type,
     position,
+    defaultCategoryId,
     createdAt,
     updatedAt,
   ];
@@ -551,6 +564,15 @@ class $SpacesTable extends Spaces with TableInfo<$SpacesTable, Space> {
         position.isAcceptableOrUnknown(data['position']!, _positionMeta),
       );
     }
+    if (data.containsKey('default_category_id')) {
+      context.handle(
+        _defaultCategoryIdMeta,
+        defaultCategoryId.isAcceptableOrUnknown(
+          data['default_category_id']!,
+          _defaultCategoryIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -608,6 +630,10 @@ class $SpacesTable extends Spaces with TableInfo<$SpacesTable, Space> {
         DriftSqlType.string,
         data['${effectivePrefix}position'],
       ),
+      defaultCategoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}default_category_id'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -634,6 +660,7 @@ class Space extends DataClass implements Insertable<Space> {
   final String? parentId;
   final String type;
   final String? position;
+  final String? defaultCategoryId;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Space({
@@ -645,6 +672,7 @@ class Space extends DataClass implements Insertable<Space> {
     this.parentId,
     required this.type,
     this.position,
+    this.defaultCategoryId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -667,6 +695,9 @@ class Space extends DataClass implements Insertable<Space> {
     if (!nullToAbsent || position != null) {
       map['position'] = Variable<String>(position);
     }
+    if (!nullToAbsent || defaultCategoryId != null) {
+      map['default_category_id'] = Variable<String>(defaultCategoryId);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -688,6 +719,9 @@ class Space extends DataClass implements Insertable<Space> {
       position: position == null && nullToAbsent
           ? const Value.absent()
           : Value(position),
+      defaultCategoryId: defaultCategoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultCategoryId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -707,6 +741,9 @@ class Space extends DataClass implements Insertable<Space> {
       parentId: serializer.fromJson<String?>(json['parentId']),
       type: serializer.fromJson<String>(json['type']),
       position: serializer.fromJson<String?>(json['position']),
+      defaultCategoryId: serializer.fromJson<String?>(
+        json['defaultCategoryId'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -723,6 +760,7 @@ class Space extends DataClass implements Insertable<Space> {
       'parentId': serializer.toJson<String?>(parentId),
       'type': serializer.toJson<String>(type),
       'position': serializer.toJson<String?>(position),
+      'defaultCategoryId': serializer.toJson<String?>(defaultCategoryId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -737,6 +775,7 @@ class Space extends DataClass implements Insertable<Space> {
     Value<String?> parentId = const Value.absent(),
     String? type,
     Value<String?> position = const Value.absent(),
+    Value<String?> defaultCategoryId = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Space(
@@ -748,6 +787,9 @@ class Space extends DataClass implements Insertable<Space> {
     parentId: parentId.present ? parentId.value : this.parentId,
     type: type ?? this.type,
     position: position.present ? position.value : this.position,
+    defaultCategoryId: defaultCategoryId.present
+        ? defaultCategoryId.value
+        : this.defaultCategoryId,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -761,6 +803,9 @@ class Space extends DataClass implements Insertable<Space> {
       parentId: data.parentId.present ? data.parentId.value : this.parentId,
       type: data.type.present ? data.type.value : this.type,
       position: data.position.present ? data.position.value : this.position,
+      defaultCategoryId: data.defaultCategoryId.present
+          ? data.defaultCategoryId.value
+          : this.defaultCategoryId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -777,6 +822,7 @@ class Space extends DataClass implements Insertable<Space> {
           ..write('parentId: $parentId, ')
           ..write('type: $type, ')
           ..write('position: $position, ')
+          ..write('defaultCategoryId: $defaultCategoryId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -793,6 +839,7 @@ class Space extends DataClass implements Insertable<Space> {
     parentId,
     type,
     position,
+    defaultCategoryId,
     createdAt,
     updatedAt,
   );
@@ -808,6 +855,7 @@ class Space extends DataClass implements Insertable<Space> {
           other.parentId == this.parentId &&
           other.type == this.type &&
           other.position == this.position &&
+          other.defaultCategoryId == this.defaultCategoryId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -821,6 +869,7 @@ class SpacesCompanion extends UpdateCompanion<Space> {
   final Value<String?> parentId;
   final Value<String> type;
   final Value<String?> position;
+  final Value<String?> defaultCategoryId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -833,6 +882,7 @@ class SpacesCompanion extends UpdateCompanion<Space> {
     this.parentId = const Value.absent(),
     this.type = const Value.absent(),
     this.position = const Value.absent(),
+    this.defaultCategoryId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -846,6 +896,7 @@ class SpacesCompanion extends UpdateCompanion<Space> {
     this.parentId = const Value.absent(),
     required String type,
     this.position = const Value.absent(),
+    this.defaultCategoryId = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -864,6 +915,7 @@ class SpacesCompanion extends UpdateCompanion<Space> {
     Expression<String>? parentId,
     Expression<String>? type,
     Expression<String>? position,
+    Expression<String>? defaultCategoryId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -877,6 +929,7 @@ class SpacesCompanion extends UpdateCompanion<Space> {
       if (parentId != null) 'parent_id': parentId,
       if (type != null) 'type': type,
       if (position != null) 'position': position,
+      if (defaultCategoryId != null) 'default_category_id': defaultCategoryId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -892,6 +945,7 @@ class SpacesCompanion extends UpdateCompanion<Space> {
     Value<String?>? parentId,
     Value<String>? type,
     Value<String?>? position,
+    Value<String?>? defaultCategoryId,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -905,6 +959,7 @@ class SpacesCompanion extends UpdateCompanion<Space> {
       parentId: parentId ?? this.parentId,
       type: type ?? this.type,
       position: position ?? this.position,
+      defaultCategoryId: defaultCategoryId ?? this.defaultCategoryId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -938,6 +993,9 @@ class SpacesCompanion extends UpdateCompanion<Space> {
     if (position.present) {
       map['position'] = Variable<String>(position.value);
     }
+    if (defaultCategoryId.present) {
+      map['default_category_id'] = Variable<String>(defaultCategoryId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -961,6 +1019,7 @@ class SpacesCompanion extends UpdateCompanion<Space> {
           ..write('parentId: $parentId, ')
           ..write('type: $type, ')
           ..write('position: $position, ')
+          ..write('defaultCategoryId: $defaultCategoryId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -7043,6 +7102,7 @@ typedef $$SpacesTableCreateCompanionBuilder =
       Value<String?> parentId,
       required String type,
       Value<String?> position,
+      Value<String?> defaultCategoryId,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<int> rowid,
@@ -7057,6 +7117,7 @@ typedef $$SpacesTableUpdateCompanionBuilder =
       Value<String?> parentId,
       Value<String> type,
       Value<String?> position,
+      Value<String?> defaultCategoryId,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -7145,6 +7206,11 @@ class $$SpacesTableFilterComposer
 
   ColumnFilters<String> get position => $composableBuilder(
     column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get defaultCategoryId => $composableBuilder(
+    column: $table.defaultCategoryId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7251,6 +7317,11 @@ class $$SpacesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get defaultCategoryId => $composableBuilder(
+    column: $table.defaultCategoryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -7314,6 +7385,11 @@ class $$SpacesTableAnnotationComposer
 
   GeneratedColumn<String> get position =>
       $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<String> get defaultCategoryId => $composableBuilder(
+    column: $table.defaultCategoryId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -7406,6 +7482,7 @@ class $$SpacesTableTableManager
                 Value<String?> parentId = const Value.absent(),
                 Value<String> type = const Value.absent(),
                 Value<String?> position = const Value.absent(),
+                Value<String?> defaultCategoryId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -7418,6 +7495,7 @@ class $$SpacesTableTableManager
                 parentId: parentId,
                 type: type,
                 position: position,
+                defaultCategoryId: defaultCategoryId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -7432,6 +7510,7 @@ class $$SpacesTableTableManager
                 Value<String?> parentId = const Value.absent(),
                 required String type,
                 Value<String?> position = const Value.absent(),
+                Value<String?> defaultCategoryId = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -7444,6 +7523,7 @@ class $$SpacesTableTableManager
                 parentId: parentId,
                 type: type,
                 position: position,
+                defaultCategoryId: defaultCategoryId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

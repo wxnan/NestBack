@@ -28,6 +28,7 @@ class Spaces extends Table {
   TextColumn get parentId => text().nullable()();
   TextColumn get type => text()();
   TextColumn get position => text().nullable()();
+  TextColumn get defaultCategoryId => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -182,7 +183,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration {
@@ -236,6 +237,10 @@ class AppDatabase extends _$AppDatabase {
         if (from < 13) {
           // v13: AiProviders 添加 builtInApiKey 列
           await _addColumnIfNotExists('ai_providers', 'built_in_api_key', 'TEXT NOT NULL DEFAULT \'\'');
+        }
+        if (from < 14) {
+          // v14: Spaces 添加 defaultCategoryId 列
+          await _addColumnIfNotExists('spaces', 'default_category_id', 'TEXT');
         }
       },
     );

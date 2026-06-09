@@ -58,15 +58,14 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
 
   @override
   Widget build(BuildContext context) {
-    final categoryProvider = context.read<CategoryProvider>();
-    final isDefault = categoryProvider.isDefaultCategory(widget.category.name);
+    final isOther = widget.category.name == '其他';
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('编辑分类'),
         actions: [
           TextButton(
-            onPressed: _saveChanges,
+            onPressed: isOther ? null : _saveChanges,
             child: const Text('保存'),
           ),
         ],
@@ -91,22 +90,15 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
                           const SizedBox(height: 16),
                           TextField(
                             controller: _nameController,
+                            enabled: !isOther,
                             decoration: InputDecoration(
                               labelText: '分类名称',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
+                              hintText: isOther ? '"其他"分类名称不可修改' : null,
                             ),
-                            enabled: !isDefault,
                           ),
-                          if (isDefault)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                '默认分类名称不可修改',
-                                style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                              ),
-                            ),
                         ],
                       ),
                     ),

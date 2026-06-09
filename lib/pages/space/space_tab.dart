@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:drift/drift.dart' as drift;
 import 'dart:io';
 import '../../database/database.dart';
@@ -12,6 +9,7 @@ import '../../providers/house_provider.dart';
 import '../../providers/space_provider.dart';
 import '../../providers/item_provider.dart';
 import 'space_hierarchy_page.dart';
+import 'space_edit_page.dart';
 import '../item/item_detail_page.dart';
 import '../home/restock_page.dart';
 import '../../main.dart';
@@ -1355,327 +1353,29 @@ class _SpaceTabState extends State<SpaceTab> {
 
   void _showAddSpaceDialog(BuildContext context, SpaceProvider spaceProvider,
       String houseId, String? parentId) {
-    _showSpaceDialog(
+    Navigator.push(
       context,
-      spaceProvider,
-      houseId: houseId,
-      parentId: parentId,
-      isAdd: true,
+      MaterialPageRoute(
+        builder: (context) => SpaceEditPage(
+          isAdd: true,
+          houseId: houseId,
+          parentId: parentId,
+        ),
+      ),
     );
   }
 
   void _editSpace(
       BuildContext context, SpaceProvider spaceProvider, dynamic space) {
-    _showSpaceDialog(
+    Navigator.push(
       context,
-      spaceProvider,
-      space: space,
-      isAdd: false,
-    );
-  }
-
-  void _showSpaceDialog(BuildContext context, SpaceProvider spaceProvider, {
-    String? houseId,
-    String? parentId,
-    dynamic space,
-    required bool isAdd,
-  }) {
-    final nameController = TextEditingController(text: space?.name ?? '');
-    String? selectedIcon = space?.icon;
-    String? selectedParentId = isAdd ? parentId : space?.parentId;
-    String? imagePath = space?.imagePath;
-    final List<Map<String, dynamic>> iconOptions = [
-      {'name': '文件夹', 'icon': Icons.folder},
-      {'name': '房间', 'icon': Icons.meeting_room},
-      {'name': '容器', 'icon': Icons.inventory_2},
-      {'name': '箱子', 'icon': Icons.luggage},
-      {'name': '书架', 'icon': Icons.book},
-      {'name': '抽屉', 'icon': Icons.view_agenda},
-      {'name': '柜子', 'icon': Icons.store},
-      {'name': '盒子', 'icon': Icons.inbox},
-      {'name': '沙发', 'icon': Icons.weekend},
-      {'name': '床', 'icon': Icons.bed},
-      {'name': '餐具', 'icon': Icons.restaurant},
-      {'name': '马桶', 'icon': Icons.wc},
-    ];
-
-    final isContainer = !isAdd ? (space.type == 'container' || space.type == 'sub_container') : parentId != null;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: Text(isAdd ? '添加空间' : '编辑空间'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: '空间名称',
-                    hintText: '例如：客厅、厨房、冰箱',
-                  ),
-                  autofocus: true,
-                ),
-                if (isContainer) ...[
-                  const SizedBox(height: 16),
-                  const Text('封面图片', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey[300]!),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: imagePath != null && imagePath!.isNotEmpty
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: InkWell(
-                                  onTap: () => _showSpaceImagePreview(imagePath!),
-                                  child: Image.file(File(imagePath!), fit: BoxFit.cover),
-                                ),
-                              )
-                            : IconButton(
-                                icon: const Icon(Icons.add_a_photo, color: Colors.grey),
-                                onPressed: () async {
-                                  final pickedImagePath = await _pickSpaceImage();
-                                  if (pickedImagePath != null) {
-                                    setState(() {
-                                      imagePath = pickedImagePath;
-                                    });
-                                  }
-                                },
-                              ),
-                      ),
-                      const SizedBox(width: 12),
-                      if (imagePath != null && imagePath!.isNotEmpty)
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              imagePath = null;
-                            });
-                          },
-                          child: const Text('删除图片'),
-                        ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 16),
-                const Text('选择图标', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: iconOptions.map((option) {
-                    final isSelected = selectedIcon == option['name'];
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedIcon = option['name'];
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? Theme.of(context).colorScheme.primaryContainer
-                              : Colors.grey[200],
-                          borderRadius: BorderRadius.circular(8),
-                          border: isSelected
-                              ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
-                              : null,
-                        ),
-                        child: Icon(
-                          option['icon'],
-                          color: isSelected
-                              ? Theme.of(context).colorScheme.onPrimaryContainer
-                              : Colors.grey[700],
-                          size: 28,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16),
-                const Text('选择位置（父空间）', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                const SizedBox(height: 8),
-                _buildParentSpaceSelector(
-                  context,
-                  spaceProvider,
-                  houseId ?? space?.houseId,
-                  selectedParentId,
-                  space?.id,
-                  (newParentId) {
-                    setState(() {
-                      selectedParentId = newParentId;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                if (nameController.text.isNotEmpty) {
-                  if (isAdd) {
-                    await spaceProvider.addSpace(
-                      houseId: houseId!,
-                      name: nameController.text,
-                      parentId: selectedParentId,
-                      icon: selectedIcon,
-                      imagePath: imagePath,
-                    );
-                  } else {
-                    await spaceProvider.updateSpace(
-                      space,
-                      newName: nameController.text,
-                      newIcon: selectedIcon,
-                      newImagePath: imagePath,
-                    );
-                    if (selectedParentId != space.parentId) {
-                      await spaceProvider.moveSpace(space.id, selectedParentId);
-                    }
-                  }
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                  }
-                }
-              },
-              child: Text(isAdd ? '添加' : '保存'),
-            ),
-          ],
+      MaterialPageRoute(
+        builder: (context) => SpaceEditPage(
+          isAdd: false,
+          space: space,
         ),
       ),
     );
-  }
-
-  Widget _buildParentSpaceSelector(
-    BuildContext context,
-    SpaceProvider spaceProvider,
-    String? houseId,
-    String? currentParentId,
-    String? excludeSpaceId,
-    Function(String?) onSelect,
-  ) {
-    if (houseId == null) {
-      return const SizedBox();
-    }
-
-    final allSpaces = spaceProvider.getAllSpacesExceptSpecial(houseId);
-    final parentSpace = spaceProvider.getSpaceById(currentParentId);
-    
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          InkWell(
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('选择父空间'),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ListTile(
-                          title: const Text('顶层空间（我的家）'),
-                          leading: const Icon(Icons.home),
-                          selected: currentParentId == null,
-                          onTap: () {
-                            onSelect(null);
-                            Navigator.pop(context);
-                          },
-                        ),
-                        ..._buildSpaceTreeOptions(
-                          allSpaces,
-                          null,
-                          currentParentId,
-                          excludeSpaceId,
-                          onSelect,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  const Icon(Icons.location_on, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      parentSpace != null
-                          ? spaceProvider.getSpacePath(parentSpace, includeSelf: true)
-                          : '顶层空间（我的家）',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                  const Icon(Icons.arrow_drop_down, color: Colors.grey),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _buildSpaceTreeOptions(
-    List<Space> spaces,
-    String? parentId,
-    String? currentParentId,
-    String? excludeSpaceId,
-    Function(String?) onSelect, [
-    int level = 0,
-  ]) {
-    final children = spaces.where((s) => s.parentId == parentId).toList();
-    List<Widget> options = [];
-
-    for (final space in children) {
-      if (space.id == excludeSpaceId) continue;
-      
-      options.add(ListTile(
-        leading: Icon(_getSpaceIcon(space.icon, space.type), size: 18),
-        title: Text(space.name),
-        selected: currentParentId == space.id,
-        onTap: () {
-          onSelect(space.id);
-          Navigator.pop(context);
-        },
-        contentPadding: EdgeInsets.only(
-          left: 16 + (level * 20).toDouble(),
-          right: 16,
-        ),
-      ));
-
-      options.addAll(_buildSpaceTreeOptions(
-        spaces,
-        space.id,
-        currentParentId,
-        excludeSpaceId,
-        onSelect,
-        level + 1,
-      ));
-    }
-
-    return options;
   }
 
   void _deleteSpace(
@@ -1712,34 +1412,6 @@ class _SpaceTabState extends State<SpaceTab> {
     );
   }
 
-  Future<String?> _pickSpaceImage() async {
-    final picker = ImagePicker();
-    final source = await showDialog<ImageSource>(
-      context: navigatorKey.currentContext!,
-      builder: (context) => AlertDialog(
-        title: const Text('选择图片来源'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, ImageSource.camera),
-            child: const Text('相机'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, ImageSource.gallery),
-            child: const Text('相册'),
-          ),
-        ],
-      ),
-    );
-
-    if (source != null) {
-      final pickedFile = await picker.pickImage(source: source);
-      if (pickedFile != null) {
-        return await _compressAndSaveImage(pickedFile.path);
-      }
-    }
-    return null;
-  }
-
   void _showSpaceImagePreview(String imagePath) {
     showDialog(
       context: navigatorKey.currentContext!,
@@ -1756,35 +1428,6 @@ class _SpaceTabState extends State<SpaceTab> {
         ),
       ),
     );
-  }
-
-  Future<String?> _compressAndSaveImage(String filePath) async {
-    try {
-      final appDir = await getApplicationDocumentsDirectory();
-      final fileName = 'space_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final targetPath = '${appDir.path}/$fileName';
-      
-      final compressedFile = await FlutterImageCompress.compressAndGetFile(
-        filePath,
-        targetPath,
-        quality: 70,
-        minWidth: 1200,
-        minHeight: 1200,
-        format: CompressFormat.jpeg,
-      );
-      
-      if (compressedFile != null) {
-        return compressedFile.path;
-      }
-    } catch (e) {
-      // 如果压缩失败，回退到原图复制
-    }
-    
-    // 降级处理：复制原图
-    final appDir = await getApplicationDocumentsDirectory();
-    final fileName = 'space_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final savedFile = await File(filePath).copy('${appDir.path}/$fileName');
-    return savedFile.path;
   }
 
   int _getChildItemsCount(SpaceProvider spaceProvider, List<Item> allItems, String parentSpaceId) {
