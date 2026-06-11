@@ -126,8 +126,8 @@ class _AboutAppPageState extends State<AboutAppPage> {
             Text('版本 ${AppInfo.version}'),
             const SizedBox(height: 16),
             const Text(
-              '一个纯本地、数据安全、永久免费、高自由度的物品收纳提醒 App。\n\n'
-              '支持多录入方式、层级空间、过期提醒、数据统计、导入导出、数据备份、实时同步、家庭协作等功能。\n\n'
+              '一个本地优先、数据安全、永久免费、高自由度的家庭物品收纳提醒 App。\n\n'
+              '支持AI录入、扫码录入、层级空间、过期提醒、数据统计、导入导出、数据备份、实时同步、家庭协作等功能。\n\n'
               '物有归巢，心有所安；\n家有温暖，爱有归处。\n愿你有充满爱的家庭，愿你是恋巢的鸟儿。',
               textAlign: TextAlign.center,
               style: TextStyle(height: 1.6),
@@ -187,8 +187,9 @@ class _AboutAppPageState extends State<AboutAppPage> {
 
   Future<void> _shareApp() async {
     await Share.share(
-      '推荐一款超好用的家庭收纳管理工具 - 归巢\n\n'
-      '下载地址：https://github.com/wxnan/nestback',
+      '推荐一款超好用的家庭物品收纳管理工具 - 归巢\n\n'
+      'GitHub：https://github.com/wxnan/nestback\n'
+      '百度网盘：https://pan.baidu.com/s/1xAmufnzGhy4003HOZwd69Q?pwd=7ycp',
     );
   }
 }

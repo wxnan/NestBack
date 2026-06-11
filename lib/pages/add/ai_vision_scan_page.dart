@@ -224,14 +224,6 @@ class _AiVisionScanPageState extends State<AiVisionScanPage> {
             label: const Text('重选'),
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: FilledButton.icon(
-            onPressed: _isProcessing ? null : _startRecognition,
-            icon: const Icon(Icons.auto_awesome),
-            label: const Text('识别'),
-          ),
-        ),
       ],
     );
   }
@@ -306,9 +298,10 @@ class _AiVisionScanPageState extends State<AiVisionScanPage> {
       setState(() {
         _selectedImage = File(targetPath);
         _compressedImagePath = targetPath;
-        _isProcessing = false;
-        _statusText = '';
       });
+
+      // 自动开始识别
+      await _startRecognition();
     } catch (e) {
       setState(() {
         _isProcessing = false;
@@ -418,12 +411,14 @@ class _AiVisionScanPageState extends State<AiVisionScanPage> {
           '  "name": "物品名称",\n'
           '  "category": "分类（$categoryList 之一）",\n'
           '  "subcategory": "二级分类（可参考已有二级分类，也可返回新的二级分类。已有二级分类参考：$subcategoryInfo 。）",\n'
-          '  "brand": "品牌（如无则为空字符串）",\n'
-          '  "manufacturer": "厂商（如无则为空字符串）",\n'
-          '  "spec": "规格（如无则为空字符串）",\n'
-          '  "color": "颜色（如无则为空字符串）",\n'
-          '  "description": "物品描述"\n'
-          '}';
+          '  "brand": "品牌（如无则为null）",\n'
+          '  "manufacturer": "厂商（如无则为null）",\n'
+          '  "spec": "规格（如无则为null）",\n'
+          '  "color": "颜色（如无则为null）",\n'
+          '  "price": "单价（如无则为null）",\n'
+          '  "description": "物品描述（如无则为null）"\n'
+          '}\n'
+          '注意：若某字段无信息，其值应为null，不要返回"无品牌"、"无厂商"等文字，也不要返回空字符串。';
 
       final body = jsonEncode({
         'model': visionModel.modelId,
@@ -559,6 +554,16 @@ class _AiVisionScanPageState extends State<AiVisionScanPage> {
   }
 
   VisionScanResult _parseFromJson(Map<String, dynamic> json) {
+    double? parsePrice(dynamic value) {
+      if (value == null) return null;
+      if (value is num) return value.toDouble();
+      if (value is String) {
+        final cleaned = value.replaceAll(RegExp(r'[^\d.]'), '');
+        return double.tryParse(cleaned);
+      }
+      return null;
+    }
+
     return VisionScanResult(
       name: json['name'] as String? ?? '',
       category: json['category'] as String? ?? '其他',
@@ -567,6 +572,7 @@ class _AiVisionScanPageState extends State<AiVisionScanPage> {
       manufacturer: json['manufacturer'] as String? ?? '',
       spec: json['spec'] as String? ?? '',
       color: json['color'] as String? ?? '',
+      price: parsePrice(json['price']),
       description: json['description'] as String? ?? '',
       imagePath: _compressedImagePath ?? '',
     );
@@ -598,6 +604,12 @@ class _AiVisionScanPageState extends State<AiVisionScanPage> {
         return null;
       }
 
+      double? parsePrice(String? value) {
+        if (value == null || value.isEmpty) return null;
+        final cleaned = value.replaceAll(RegExp(r'[^\d.]'), '');
+        return double.tryParse(cleaned);
+      }
+
       return VisionScanResult(
         name: data['name'] ?? '',
         category: data['category'] ?? '其他',
@@ -606,6 +618,7 @@ class _AiVisionScanPageState extends State<AiVisionScanPage> {
         manufacturer: data['manufacturer'] ?? '',
         spec: data['spec'] ?? '',
         color: data['color'] ?? '',
+        price: parsePrice(data['price']),
         description: data['description'] ?? '',
         imagePath: _compressedImagePath ?? '',
       );
@@ -624,6 +637,7 @@ class VisionScanResult {
   final String manufacturer;
   final String spec;
   final String color;
+  final double? price;
   final String description;
   final String imagePath;
 
@@ -635,6 +649,7 @@ class VisionScanResult {
     required this.manufacturer,
     required this.spec,
     required this.color,
+    this.price,
     required this.description,
     required this.imagePath,
   });

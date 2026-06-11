@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:collection/collection.dart';
 import '../../providers/house_provider.dart';
 import '../../providers/item_provider.dart';
 import '../../providers/category_provider.dart';
@@ -20,6 +21,7 @@ class StatsTab extends StatefulWidget {
 
 class _StatsTabState extends State<StatsTab> {
   String _selectedDimension = 'category';
+  String? _selectedPrimaryValue;
 
   @override
   Widget build(BuildContext context) {
@@ -34,21 +36,21 @@ class _StatsTabState extends State<StatsTab> {
         }
 
         final items = itemProvider.items;
-        
+
         // 获取过期和即将过期物品
         final expiredItems = itemProvider.getExpiredItems(currentHouse.id);
         final expiringItems = itemProvider.getExpiringItems(currentHouse.id, settingsProvider.expiringThresholdDays);
-        
+
         // 过滤掉回收站和垃圾桶空间的物品
         final excludedSpaceTypes = {'recycle', 'trash'};
         final excludedSpaceIds = spaceProvider.spaces
             .where((s) => excludedSpaceTypes.contains(s.type))
             .map((s) => s.id)
             .toSet();
-        
+
         final filteredExpiredItems = expiredItems.where((item) => !excludedSpaceIds.contains(item.spaceId)).toList();
         final filteredExpiringItems = expiringItems.where((item) => !excludedSpaceIds.contains(item.spaceId)).toList();
-        
+
         final expiredCount = filteredExpiredItems.length;
         final expiringCount = filteredExpiringItems.length;
 
@@ -57,13 +59,13 @@ class _StatsTabState extends State<StatsTab> {
             0, (sum, item) => sum + (item.price ?? 0) * item.quantity);
         final pendingValueItems =
             items.where((item) => item.price == null).length;
-        
+
         return FutureBuilder<int>(
           future: itemProvider.getLowStockItemsCount(currentHouse.id, settingsProvider.lowStockThreshold),
           initialData: 0,
           builder: (context, snapshot) {
             final lowStockItems = snapshot.data ?? 0;
-            
+
             return Scaffold(
               appBar: AppBar(
                 title: const Text('统计'),
@@ -82,8 +84,10 @@ class _StatsTabState extends State<StatsTab> {
                     _buildDimensionSelector(context),
                     const SizedBox(height: 16),
                     _buildPieChart(context, items, spaceProvider, currentHouse.name),
-                    const SizedBox(height: 16),
-                    _buildCategoryList(context, items, spaceProvider, currentHouse.name),
+                    if (_selectedPrimaryValue != null) ...[
+                      const SizedBox(height: 16),
+                      _buildSecondaryPieChart(context, items, spaceProvider, categoryProvider, currentHouse.name),
+                    ],
                   ],
                 ),
               ),
@@ -317,6 +321,7 @@ class _StatsTabState extends State<StatsTab> {
         if (selected) {
           setState(() {
             _selectedDimension = value;
+            _selectedPrimaryValue = null;
           });
         }
       },
@@ -375,16 +380,31 @@ class _StatsTabState extends State<StatsTab> {
               height: 250,
               child: PieChart(
                 PieChartData(
+                  pieTouchData: PieTouchData(
+                    touchCallback: (FlTouchEvent event, PieTouchResponse? response) {
+                      if (event is FlTapUpEvent && response != null && response.touchedSection != null) {
+                        final index = response.touchedSection!.touchedSectionIndex;
+                        final entries = categoryData.entries.toList();
+                        if (index >= 0 && index < entries.length) {
+                          final selected = entries[index].key;
+                          setState(() {
+                            _selectedPrimaryValue = _selectedPrimaryValue == selected ? null : selected;
+                          });
+                        }
+                      }
+                    },
+                  ),
                   sections: categoryData.entries.toList().asMap().entries.map((entry) {
                     final index = entry.key;
                     final count = entry.value.value;
                     final percentage = (count / total * 100).toStringAsFixed(1);
+                    final isSelected = entry.value.key == _selectedPrimaryValue;
 
                     return PieChartSectionData(
                       color: colors[index],
                       value: count.toDouble(),
                       title: '$percentage%',
-                      radius: 80,
+                      radius: isSelected ? 95 : 80,
                       titleStyle: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -547,7 +567,7 @@ class _StatsTabState extends State<StatsTab> {
 
   String _getTopLevelSpaceName(dynamic space, SpaceProvider spaceProvider, String houseName) {
     var currentSpace = space;
-    
+
     while (currentSpace.parentId != null) {
       try {
         currentSpace = spaceProvider.spaces.firstWhere(
@@ -557,8 +577,204 @@ class _StatsTabState extends State<StatsTab> {
         break;
       }
     }
-    
+
     return currentSpace.name;
+  }
+
+  Widget _buildSecondaryPieChart(BuildContext context, List<dynamic> items, SpaceProvider spaceProvider, CategoryProvider categoryProvider, String houseName) {
+    if (_selectedPrimaryValue == null) return const SizedBox();
+
+    Map<String, int> secondaryData;
+    String title;
+
+    switch (_selectedDimension) {
+      case 'category':
+        secondaryData = _groupBySubcategory(items, _selectedPrimaryValue!, categoryProvider);
+        title = '$_selectedPrimaryValue · 二级分类';
+        break;
+      case 'space':
+        secondaryData = _groupBySubSpace(items, _selectedPrimaryValue!, spaceProvider);
+        title = '$_selectedPrimaryValue · 空间分布';
+        break;
+      case 'tag':
+        secondaryData = _groupByRelatedTags(items, _selectedPrimaryValue!);
+        title = '$_selectedPrimaryValue · 关联标签';
+        break;
+      default:
+        return const SizedBox();
+    }
+
+    if (secondaryData.isEmpty) {
+      return Card(
+        child: Container(
+          height: 200,
+          padding: const EdgeInsets.all(32),
+          child: Center(
+            child: Text(
+              '暂无二级数据',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final colors = _getColors(secondaryData.length);
+    final total = secondaryData.values.fold<int>(0, (sum, count) => sum + count);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 20),
+                  onPressed: () {
+                    setState(() {
+                      _selectedPrimaryValue = null;
+                    });
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 200,
+              child: PieChart(
+                PieChartData(
+                  sections: secondaryData.entries.toList().asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final count = entry.value.value;
+                    final percentage = total > 0 ? (count / total * 100).toStringAsFixed(1) : '0.0';
+
+                    return PieChartSectionData(
+                      color: colors[index],
+                      value: count.toDouble(),
+                      title: '$percentage%',
+                      radius: 70,
+                      titleStyle: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    );
+                  }).toList(),
+                  sectionsSpace: 2,
+                  centerSpaceRadius: 30,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 6,
+              children: secondaryData.entries.toList().asMap().entries.map((entry) {
+                final index = entry.key;
+                final label = entry.value.key;
+                final count = entry.value.value;
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: colors[index],
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        '$label ($count)',
+                        style: const TextStyle(fontSize: 12),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Map<String, int> _groupBySubcategory(List<dynamic> items, String categoryName, CategoryProvider categoryProvider) {
+    final category = categoryProvider.categories.firstWhereOrNull((c) => c.name == categoryName);
+    if (category == null) return {};
+
+    final subcategories = categoryProvider.getSubcategoriesForCategory(category.id);
+    final subMap = <String, String>{};
+    for (final sub in subcategories) {
+      subMap[sub.id] = sub.name;
+    }
+
+    final filtered = items.where((item) => item.category == categoryName);
+    final result = <String, int>{};
+    for (final item in filtered) {
+      final subName = subMap[item.subcategoryId] ?? '未分类';
+      result[subName] = (result[subName] ?? 0) + 1;
+    }
+    return result;
+  }
+
+  Map<String, int> _groupBySubSpace(List<dynamic> items, String topLevelSpaceName, SpaceProvider spaceProvider) {
+    final topLevelSpaces = spaceProvider.spaces.where((s) => s.name == topLevelSpaceName).toList();
+    if (topLevelSpaces.isEmpty) return {};
+
+    final topSpace = topLevelSpaces.first;
+    final childSpaces = spaceProvider.spaces.where((s) => s.parentId == topSpace.id).toList();
+
+    final result = <String, int>{};
+
+    // 统计顶级空间本身的物品
+    final topLevelCount = items.where((item) => item.spaceId == topSpace.id).length;
+    if (topLevelCount > 0) {
+      result[topSpace.name] = topLevelCount;
+    }
+
+    // 统计子空间的物品
+    for (final child in childSpaces) {
+      final count = items.where((item) => item.spaceId == child.id).length;
+      if (count > 0) {
+        result[child.name] = count;
+      }
+    }
+
+    return result;
+  }
+
+  Map<String, int> _groupByRelatedTags(List<dynamic> items, String tagName) {
+    final relatedItems = items.where((item) {
+      final tags = item.tags?.split(',') ?? [];
+      return tags.contains(tagName);
+    });
+
+    final result = <String, int>{};
+    for (final item in relatedItems) {
+      final tags = item.tags?.split(',') ?? [];
+      for (final tag in tags) {
+        if (tag != tagName && tag.isNotEmpty) {
+          result[tag] = (result[tag] ?? 0) + 1;
+        }
+      }
+    }
+
+    if (result.isEmpty) {
+      return {'无其他标签': relatedItems.length};
+    }
+
+    return result;
   }
 
   List<Color> _getColors(int count) {

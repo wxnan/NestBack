@@ -332,7 +332,7 @@ class _BarcodeSettingsPageState extends State<BarcodeSettingsPage> {
         return {
           'name': 'apizero-pro',
           'url': 'https://v1.apizero.cn/api/barcode-gs1',
-          'quota': '每日 20 次 · QPS 2（匿名/登录相同）',
+          'quota': '每日 20 次 · QPS 1（匿名/登录相同）',
           'keyRequired': '可选（无 Key 也可使用）',
           'source': 'GS1 中国官方数据库，权威可追溯',
           'barcode': 'EAN-13、GTIN-14、EAN-8 等',
@@ -471,7 +471,7 @@ class _BarcodeSettingsPageState extends State<BarcodeSettingsPage> {
               const SizedBox(height: 8),
               Text(
                 provider == 'apizero'
-                    ? '未填写 Key 时每日可查询 20 次；填写 Key 后每日可查询 200 次'
+                    ? '未填写 Key 时每日可查询 20 次；\n填写 Key 后每日可查询 200 次'
                     : '未填写 Key 时每日可查询 20 次',
                 style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),

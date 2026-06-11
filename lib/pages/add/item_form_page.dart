@@ -197,6 +197,12 @@ class _ItemFormPageState extends State<ItemFormPage> {
       _nameController.text = result.name;
     }
 
+    // 设置单价
+    if (result.price != null) {
+      _priceController.text = result.price.toString();
+      _totalPriceController.text = result.price.toString();
+    }
+
     // 设置封面图片
     if (result.imagePath.isNotEmpty) {
       _imagePath = result.imagePath;
@@ -963,7 +969,18 @@ class _ItemFormPageState extends State<ItemFormPage> {
               }
               return null;
             },
-            onChanged: (value) => setState(() {}),
+            onChanged: (value) {
+              if (_isCalculating) return;
+              _isCalculating = true;
+              setState(() {
+                final quantity = int.tryParse(value) ?? 0;
+                final price = double.tryParse(_priceController.text);
+                if (price != null && quantity > 0) {
+                  _totalPriceController.text = (price * quantity).toStringAsFixed(2);
+                }
+              });
+              _isCalculating = false;
+            },
           ),
         ),
         const SizedBox(width: 12),
@@ -1705,19 +1722,36 @@ class _ItemFormPageState extends State<ItemFormPage> {
   Widget _buildSubmitButton() {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: SizedBox(
-        width: double.infinity,
-        child: FilledButton.icon(
-          onPressed: _submitForm,
-          icon: const Icon(Icons.save),
-          label: const Text('保存物品'),
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => _submitForm(stayOnPage: true),
+              icon: const Icon(Icons.save),
+              label: const Text('保存继续'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
           ),
-        ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: () => _submitForm(stayOnPage: false),
+              icon: const Icon(Icons.save),
+              label: const Text('保存返回'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1769,7 +1803,7 @@ class _ItemFormPageState extends State<ItemFormPage> {
     return errors;
   }
 
-  Future<void> _submitForm() async {
+  Future<void> _submitForm({required bool stayOnPage}) async {
     debugPrint('[_submitForm] _selectedSubcategoryId: $_selectedSubcategoryId');
     debugPrint('[_submitForm] _selectedCategoryId: $_selectedCategoryId');
 
@@ -1815,11 +1849,11 @@ class _ItemFormPageState extends State<ItemFormPage> {
     // 获取过期日期和过保日期
     DateTime? expireDate;
     DateTime? warrantyExpireDate;
-    
+
     if (_selectedCategory != null) {
       final expireDateAttr = _findAttributeByName('过期日期');
       final warrantyExpireDateAttr = _findAttributeByName('过保日期');
-      
+
       if (expireDateAttr != null && expireDateAttr.id.isNotEmpty) {
         final expireDateStr = _customAttributes[expireDateAttr.id];
         if (expireDateStr != null && expireDateStr.isNotEmpty) {
@@ -1830,7 +1864,7 @@ class _ItemFormPageState extends State<ItemFormPage> {
           }
         }
       }
-      
+
       if (warrantyExpireDateAttr != null && warrantyExpireDateAttr.id.isNotEmpty) {
         final warrantyExpireDateStr = _customAttributes[warrantyExpireDateAttr.id];
         if (warrantyExpireDateStr != null && warrantyExpireDateStr.isNotEmpty) {
@@ -1879,7 +1913,42 @@ class _ItemFormPageState extends State<ItemFormPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('物品添加成功')),
       );
-      Navigator.pop(context);
+
+      if (stayOnPage) {
+        // 保存继续：保留位置、分类、二级分类，重置其他字段
+        final savedSpaceId = _selectedSpaceId;
+        final savedCategory = _selectedCategory;
+        final savedCategoryId = _selectedCategoryId;
+        final savedSubcategoryId = _selectedSubcategoryId;
+
+        _nameController.clear();
+        _quantityController.text = '1';
+        _unitController.text = '件';
+        _priceController.clear();
+        _totalPriceController.clear();
+        _noteController.clear();
+
+        setState(() {
+          _selectedSpaceId = savedSpaceId;
+          _selectedCategory = savedCategory;
+          _selectedCategoryId = savedCategoryId;
+          _selectedSubcategoryId = savedSubcategoryId;
+          _selectedTags = [];
+          _customAttributes = {};
+          _imagePath = null;
+          _enableLowStockReminder = false;
+        });
+      } else {
+        // 保存返回：AI识图录入返回识图页面，其他返回上一页
+        if (widget.visionResult != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const AiVisionScanPage()),
+          );
+        } else {
+          Navigator.pop(context);
+        }
+      }
     }
   }
 

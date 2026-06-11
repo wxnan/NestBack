@@ -78,7 +78,7 @@ class DonationPage extends StatelessWidget {
                       context,
                       icon: Icons.shopping_cart,
                       title: '省钱优惠',
-                      subtitle: '领取优惠券',
+                      subtitle: '电商/外卖/打车/快递/流量卡/卡券/其他优惠',
                       color: Colors.orange,
                       onTap: () => _launchUrl('https://www.yuque.com/dawnan/sheng/shengqian?singleDoc#%20%E3%80%8A%E7%9C%81%E9%92%B1%E4%BC%98%E6%83%A0%E3%80%8B'),
                     ),

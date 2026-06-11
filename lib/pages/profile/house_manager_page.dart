@@ -167,76 +167,101 @@ class HouseManagerPage extends StatelessWidget {
     final isCurrent = house.id == houseProvider.currentHouse?.id;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: isCurrent
             ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5)
             : BorderSide.none,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: isCurrent
-                    ? Theme.of(context).colorScheme.primaryContainer
-                    : Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: isCurrent
+            ? null
+            : () => _switchHouse(context, house),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isCurrent
+                      ? Theme.of(context).colorScheme.primaryContainer
+                      : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  isCurrent ? Icons.home : Icons.home_outlined,
+                  color: isCurrent
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.grey[600],
+                ),
               ),
-              child: Icon(
-                isCurrent ? Icons.home : Icons.home_outlined,
-                color: isCurrent
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.grey[600],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    house.name,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
-                    ),
-                  ),
-                  if (isCurrent) ...[
-                    const SizedBox(height: 2),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      '当前家庭',
+                      house.name,
                       style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.primary,
+                        fontSize: 16,
+                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
                       ),
                     ),
+                    if (isCurrent) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        '当前家庭',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            IconButton(
-              onPressed: () => _showEditHouseDialog(context, houseProvider, house),
-              icon: Icon(Icons.edit_outlined, size: 20, color: Colors.grey[600]),
-              tooltip: '编辑',
-            ),
-            IconButton(
-              onPressed: isCurrent
-                  ? null
-                  : () => _showDeleteConfirmDialog(context, houseProvider, house),
-              icon: Icon(
-                Icons.delete_outline,
-                size: 20,
-                color: isCurrent ? Colors.grey[300] : Colors.red[400],
+              IconButton(
+                onPressed: () => _showEditHouseDialog(context, houseProvider, house),
+                icon: Icon(Icons.edit_outlined, size: 20, color: Colors.grey[600]),
+                tooltip: '编辑',
               ),
-              tooltip: isCurrent ? '无法删除当前家庭' : '删除',
-            ),
-          ],
+              IconButton(
+                onPressed: isCurrent
+                    ? null
+                    : () => _showDeleteConfirmDialog(context, houseProvider, house),
+                icon: Icon(
+                  Icons.delete_outline,
+                  size: 20,
+                  color: isCurrent ? Colors.grey[300] : Colors.red[400],
+                ),
+                tooltip: isCurrent ? '无法删除当前家庭' : '删除',
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Future<void> _switchHouse(BuildContext context, House house) async {
+    final houseProvider = context.read<HouseProvider>();
+    await houseProvider.switchHouse(house);
+    if (!context.mounted) return;
+    await context.read<ItemProvider>().loadItems(house.id);
+    if (!context.mounted) return;
+    await context.read<CategoryProvider>().loadCategories();
+    if (!context.mounted) return;
+    await context.read<SpaceProvider>().loadSpaces(house.id);
+    if (!context.mounted) return;
+    await context.read<TagProvider>().loadTags();
+    if (!context.mounted) return;
+    _setSpecialSpaceIds(context, house.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('已切换到"${house.name}"')),
     );
   }
 
@@ -257,21 +282,8 @@ class HouseManagerPage extends StatelessWidget {
           final isCurrent = house.id == houseProvider.currentHouse?.id;
           return SimpleDialogOption(
             onPressed: () async {
-              houseProvider.switchHouse(house);
               Navigator.pop(context);
-              await context.read<ItemProvider>().loadItems(house.id);
-              if (!context.mounted) return;
-              await context.read<CategoryProvider>().loadCategories();
-              if (!context.mounted) return;
-              await context.read<SpaceProvider>().loadSpaces(house.id);
-              if (!context.mounted) return;
-              await context.read<TagProvider>().loadTags();
-              if (!context.mounted) return;
-              _setSpecialSpaceIds(context, house.id);
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('已切换到"${house.name}"')),
-              );
+              await _switchHouse(context, house);
             },
             child: Row(
               children: [

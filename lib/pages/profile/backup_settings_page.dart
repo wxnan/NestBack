@@ -592,6 +592,63 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
     );
   }
 
+  void _showSwitchHouseDialog(BuildContext context) {
+    final houseProvider = Provider.of<HouseProvider>(context, listen: false);
+    final houses = houseProvider.houses;
+    if (houses.length <= 1) {
+      _showSnackBar('当前只有一个家庭，无法切换', isError: true);
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('选择当前家庭'),
+        children: houses.map((house) {
+          final isCurrent = house.id == houseProvider.currentHouse?.id;
+          return SimpleDialogOption(
+            onPressed: () async {
+              Navigator.pop(context);
+              await houseProvider.switchHouse(house);
+              if (!mounted) return;
+              await _refreshAllProviders();
+              if (!mounted) return;
+              await _loadBackupList();
+              if (!mounted) return;
+              _showSnackBar('已切换到"${house.name}"', isError: false);
+            },
+            child: Row(
+              children: [
+                Icon(
+                  isCurrent ? Icons.check_circle : Icons.circle_outlined,
+                  color: isCurrent ? Theme.of(context).colorScheme.primary : Colors.grey,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  house.name,
+                  style: TextStyle(
+                    fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                if (isCurrent) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '(当前)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final houseProvider = Provider.of<HouseProvider>(context);
@@ -607,23 +664,34 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
           if (currentHouse != null)
             Card(
               color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Icon(Icons.home, color: Theme.of(context).colorScheme.primary),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => _showSwitchHouseDialog(context),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.home, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('当前家庭', style: Theme.of(context).textTheme.bodySmall),
+                            Text(currentHouse.name, style: Theme.of(context).textTheme.titleMedium),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('当前家庭', style: Theme.of(context).textTheme.bodySmall),
-                          Text(currentHouse.name, style: Theme.of(context).textTheme.titleMedium),
+                          Text('备份将存入同名目录', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey)),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
                         ],
                       ),
-                    ),
-                    Text('备份将存入同名目录', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey)),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -827,29 +895,6 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
     final houseProvider = Provider.of<HouseProvider>(context);
     final currentHouse = houseProvider.currentHouse;
 
-    if (_backupList == null || _backupList!.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
-              const SizedBox(height: 8),
-              Text(
-                currentHouse != null ? '"${currentHouse.name}" 暂无备份文件' : '暂无备份文件',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '点击"恢复家庭"可查看并恢复备份',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     return Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -867,55 +912,79 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    '${_backupList!.length}',
+                    '${_backupList?.length ?? 0}',
                     style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSecondaryContainer),
                   ),
                 ),
               ],
             ),
           ),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _backupList!.length,
-            itemBuilder: (context, index) {
-              final backup = _backupList![index];
-              return ListTile(
-                leading: Icon(
-                  backup.isEncrypted ? Icons.lock : Icons.archive,
-                  color: backup.isEncrypted ? Colors.amber[700] : null,
-                ),
-                title: Text(backup.formattedTime),
-                subtitle: Row(
+          if (_backupList == null || _backupList!.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(backup.formattedSize),
-                    if (backup.isEncrypted) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        '已加密',
-                        style: TextStyle(fontSize: 12, color: Colors.amber[700]),
+                    const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
+                    const SizedBox(height: 8),
+                    Text(
+                      currentHouse != null ? '"${currentHouse.name}" 暂无备份文件' : '暂无备份文件',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '点击"恢复家庭"可查看并恢复备份',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _backupList!.length,
+              itemBuilder: (context, index) {
+                final backup = _backupList![index];
+                return ListTile(
+                  leading: Icon(
+                    backup.isEncrypted ? Icons.lock : Icons.archive,
+                    color: backup.isEncrypted ? Colors.amber[700] : null,
+                  ),
+                  title: Text(backup.formattedTime),
+                  subtitle: Row(
+                    children: [
+                      Text(backup.formattedSize),
+                      if (backup.isEncrypted) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          '已加密',
+                          style: TextStyle(fontSize: 12, color: Colors.amber[700]),
+                        ),
+                      ],
+                    ],
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.restore),
+                        tooltip: '恢复',
+                        onPressed: _isRestoring ? null : () => _restoreHouse(backup),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        tooltip: '删除',
+                        onPressed: () => _deleteBackup(backup),
                       ),
                     ],
-                  ],
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.restore),
-                      tooltip: '恢复',
-                      onPressed: _isRestoring ? null : () => _restoreHouse(backup),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete),
-                      tooltip: '删除',
-                      onPressed: () => _deleteBackup(backup),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -959,10 +1028,24 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
             else if (_settingsBackups.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: Text(
-                  _isConfigured ? '暂无设置备份，点击"备份设置"创建' : '请先配置 WebDAV',
-                  style: TextStyle(color: Colors.grey[600]),
-                  textAlign: TextAlign.center,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
+                      const SizedBox(height: 8),
+                      Text(
+                        _isConfigured ? '“设置”暂无备份文件' : '请先配置 WebDAV',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '点击"恢复设置"可查看并恢复备份',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                      ),
+                    ],
+                  ),
                 ),
               )
             else
