@@ -89,6 +89,8 @@ class _SpaceTabState extends State<SpaceTab> {
       }
       _clearSelection();
       _toggleSelectionMode();
+      // 刷新数据以即时更新空间物品数量
+      await _refreshData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('已移动 ${selectedItems.length} 个物品')),
@@ -154,6 +156,8 @@ class _SpaceTabState extends State<SpaceTab> {
       }
       _clearSelection();
       _toggleSelectionMode();
+      // 刷新数据以即时更新空间物品数量
+      await _refreshData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('已彻底删除 ${selectedItems.length} 个物品')),
@@ -175,6 +179,8 @@ class _SpaceTabState extends State<SpaceTab> {
       }
       _clearSelection();
       _toggleSelectionMode();
+      // 刷新数据以即时更新空间物品数量
+      await _refreshData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('已移至回收站 ${selectedItems.length} 个物品')),
@@ -197,6 +203,26 @@ class _SpaceTabState extends State<SpaceTab> {
     if (currentHouse != null) {
       await context.read<SpaceProvider>().loadSpaces(currentHouse.id);
       await context.read<SpaceProvider>().loadCurrentLevel(currentHouse.id);
+    }
+  }
+
+  Future<void> _refreshData() async {
+    final houseProvider = context.read<HouseProvider>();
+    final currentHouse = houseProvider.currentHouse;
+    if (currentHouse != null) {
+      final spaceProvider = context.read<SpaceProvider>();
+      // 保存当前空间状态（loadSpaces 会重置 currentSpace）
+      final currentSpaceId = spaceProvider.currentSpace?.id;
+      
+      // 刷新物品数据
+      await context.read<ItemProvider>().loadItems(currentHouse.id);
+      // 刷新空间数据（这会重置 currentSpace）
+      await spaceProvider.loadSpaces(currentHouse.id);
+      // 恢复到之前的空间层级
+      await spaceProvider.loadCurrentLevel(
+        currentHouse.id,
+        parentId: currentSpaceId,
+      );
     }
   }
 
@@ -375,27 +401,34 @@ class _SpaceTabState extends State<SpaceTab> {
 
     // 先添加特殊空间卡片（顶层，固定位置）
     if (spaceProvider.currentSpace == null && pendingSpace != null) {
+      final pendingDirectCount = spaceProvider.getItemsInSpace(allItems, pendingSpace.id).length;
+      final pendingChildCount = spaceProvider.getChildSpaces(pendingSpace.id).length;
+      final pendingTotalCount = pendingDirectCount + _getChildItemsCount(spaceProvider, allItems, pendingSpace.id);
       topItems.add(_buildSpecialSpaceCard(
         context,
         pendingSpace,
         Icons.pending_actions,
         '待整理',
         Colors.orange,
-        spaceProvider.getItemsInSpace(allItems, pendingSpace.id).length,
-        spaceProvider.getChildSpaces(pendingSpace.id).length,
+        pendingDirectCount,
+        pendingChildCount,
+        pendingTotalCount,
       ));
     }
 
     if (spaceProvider.currentSpace == null && recycleBinSpace != null) {
+      final recycleDirectCount = spaceProvider.getItemsInSpace(allItems, recycleBinSpace.id).length;
+      final recycleChildCount = spaceProvider.getChildSpaces(recycleBinSpace.id).length;
+      final recycleTotalCount = recycleDirectCount + _getChildItemsCount(spaceProvider, allItems, recycleBinSpace.id);
       topItems.add(_buildSpecialSpaceCard(
         context,
         recycleBinSpace,
         Icons.delete_outline,
         '回收站',
         Colors.red,
-        spaceProvider.getItemsInSpace(allItems, recycleBinSpace.id).length +
-            _getChildItemsCount(spaceProvider, allItems, recycleBinSpace.id),
-        spaceProvider.getChildSpaces(recycleBinSpace.id).length,
+        recycleDirectCount,
+        recycleChildCount,
+        recycleTotalCount,
       ));
     }
 
@@ -501,10 +534,13 @@ class _SpaceTabState extends State<SpaceTab> {
 
   Widget _buildReorderableSpaceCard(BuildContext context, dynamic space,
       SpaceProvider spaceProvider, String houseId) {
+    final allItems = context.read<ItemProvider>().allItems;
     final childCount = spaceProvider.getChildSpaces(space.id).length;
-    final itemCount = spaceProvider
-        .getItemsInSpace(context.read<ItemProvider>().allItems, space.id)
-        .length;
+    final directCount = spaceProvider.getItemsInSpace(allItems, space.id).length;
+    final totalCount = directCount + _getChildItemsCount(spaceProvider, allItems, space.id);
+    final itemCountText = childCount > 0 && totalCount != directCount
+        ? '$directCount ($totalCount) 个物品'
+        : '$directCount 个物品';
 
     return Slidable(
       key: ValueKey(space.id),
@@ -566,9 +602,9 @@ class _SpaceTabState extends State<SpaceTab> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       Text(
-                        childCount > 0 
-                            ? '$childCount 个子空间 · $itemCount 个物品' 
-                            : '$itemCount 个物品',
+                        childCount > 0
+                            ? '$childCount 个子空间 · $itemCountText'
+                            : itemCountText,
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
@@ -591,7 +627,10 @@ class _SpaceTabState extends State<SpaceTab> {
   }
 
   Widget _buildSpecialSpaceCard(BuildContext context, dynamic space,
-      IconData icon, String title, Color color, int itemCount, int childCount) {
+      IconData icon, String title, Color color, int directItemCount, int childCount, int totalCount) {
+    final itemCountText = childCount > 0 && totalCount != directItemCount
+        ? '$directItemCount ($totalCount) 个物品'
+        : '$directItemCount 个物品';
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       color: color.withOpacity(0.15),
@@ -622,8 +661,8 @@ class _SpaceTabState extends State<SpaceTab> {
                     ),
                     Text(
                       childCount > 0
-                          ? '$childCount 个子空间 · $itemCount 个物品'
-                          : '$itemCount 个物品',
+                          ? '$childCount 个子空间 · $itemCountText'
+                          : itemCountText,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -638,10 +677,13 @@ class _SpaceTabState extends State<SpaceTab> {
 
   Widget _buildSpaceCard(BuildContext context, dynamic space,
       SpaceProvider spaceProvider, String houseId) {
+    final allItems = context.read<ItemProvider>().allItems;
     final childCount = spaceProvider.getChildSpaces(space.id).length;
-    final itemCount = spaceProvider
-        .getItemsInSpace(context.read<ItemProvider>().allItems, space.id)
-        .length;
+    final directCount = spaceProvider.getItemsInSpace(allItems, space.id).length;
+    final totalCount = directCount + _getChildItemsCount(spaceProvider, allItems, space.id);
+    final itemCountText = childCount > 0 && totalCount != directCount
+        ? '$directCount ($totalCount) 个物品'
+        : '$directCount 个物品';
     final isSpecial = spaceProvider.isSpecialSpace(space);
 
     if (isSpecial) {
@@ -669,9 +711,9 @@ class _SpaceTabState extends State<SpaceTab> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       Text(
-                        childCount > 0 
-                            ? '$childCount 个子空间 · $itemCount 个物品' 
-                            : '$itemCount 个物品',
+                        childCount > 0
+                            ? '$childCount 个子空间 · $itemCountText'
+                            : itemCountText,
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
@@ -744,9 +786,9 @@ class _SpaceTabState extends State<SpaceTab> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       Text(
-                        childCount > 0 
-                            ? '$childCount 个子空间 · $itemCount 个物品' 
-                            : '$itemCount 个物品',
+                        childCount > 0
+                            ? '$childCount 个子空间 · $itemCountText'
+                            : itemCountText,
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
@@ -895,13 +937,17 @@ class _SpaceTabState extends State<SpaceTab> {
             ? _buildSpecialSpaceItemSlideActions(context, item)
             : _buildRightSlideActions(context, item),
         child: InkWell(
-          onTap: () {
-            Navigator.push(
+          onTap: () async {
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => ItemDetailPage(item: item),
               ),
             );
+            // 返回后刷新数据
+            if (mounted) {
+              await _refreshData();
+            }
           },
           onLongPress: () {
             _toggleSelectionMode();
@@ -1000,13 +1046,17 @@ class _SpaceTabState extends State<SpaceTab> {
       extentRatio: 0.5,
       children: [
         SlidableAction(
-          onPressed: (context) {
-            Navigator.push(
+          onPressed: (context) async {
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => ItemDetailPage(item: item, isCopy: true),
               ),
             );
+            // 返回后刷新数据
+            if (mounted) {
+              await _refreshData();
+            }
           },
           backgroundColor: Colors.purple,
           foregroundColor: Colors.white,
@@ -1015,13 +1065,17 @@ class _SpaceTabState extends State<SpaceTab> {
           borderRadius: BorderRadius.circular(12),
         ),
         SlidableAction(
-          onPressed: (context) {
-            Navigator.push(
+          onPressed: (context) async {
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => ItemDetailPage(item: item, isSplit: true),
               ),
             );
+            // 返回后刷新数据
+            if (mounted) {
+              await _refreshData();
+            }
           },
           backgroundColor: Colors.blue,
           foregroundColor: Colors.white,
@@ -1039,13 +1093,17 @@ class _SpaceTabState extends State<SpaceTab> {
       extentRatio: 0.55,
       children: [
         SlidableAction(
-          onPressed: (context) {
-            Navigator.push(
+          onPressed: (context) async {
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => RestockPage(item: item),
               ),
             );
+            // 返回后刷新数据
+            if (mounted) {
+              await _refreshData();
+            }
           },
           backgroundColor: Colors.green,
           foregroundColor: Colors.white,
@@ -1054,12 +1112,13 @@ class _SpaceTabState extends State<SpaceTab> {
           borderRadius: BorderRadius.circular(12),
         ),
         SlidableAction(
-          onPressed: (context) {
+          onPressed: (context) async {
             final itemProvider = Provider.of<ItemProvider>(context, listen: false);
-            _showConfirmDialog(context, '彻底删除',
-                '确定彻底删除该物品吗？此操作无法撤销。', () async {
-              await itemProvider.permanentDeleteItem(item);
-            });
+            await itemProvider.permanentDeleteItem(item);
+            // 删除后刷新数据
+            if (mounted) {
+              await _refreshData();
+            }
           },
           backgroundColor: Colors.red,
           foregroundColor: Colors.white,
@@ -1104,6 +1163,8 @@ class _SpaceTabState extends State<SpaceTab> {
       ),
     );
     await context.read<ItemProvider>().loadItems(item.houseId);
+    // 刷新数据以即时更新空间物品数量
+    await _refreshData();
   }
 
   Future<void> _decrementQuantity(Item item) async {
@@ -1116,6 +1177,8 @@ class _SpaceTabState extends State<SpaceTab> {
       ),
     );
     await context.read<ItemProvider>().loadItems(item.houseId);
+    // 刷新数据以即时更新空间物品数量
+    await _refreshData();
   }
 
   Future<void> _moveToRecycleBin(BuildContext context, Item item, AppDatabase db) async {
@@ -1139,6 +1202,8 @@ class _SpaceTabState extends State<SpaceTab> {
       ),
     );
     await itemProvider.loadItems(item.houseId);
+    // 刷新数据以即时更新空间物品数量
+    await _refreshData();
   }
 
   Future<void> _moveItemToTrash(BuildContext context, Item item) async {
@@ -1163,6 +1228,8 @@ class _SpaceTabState extends State<SpaceTab> {
       ),
     );
     await itemProvider.loadItems(item.houseId);
+    // 刷新数据以即时更新空间物品数量
+    await _refreshData();
   }
 
   Widget _buildItemImage(BuildContext context, Item item) {
@@ -1263,12 +1330,12 @@ class _SpaceTabState extends State<SpaceTab> {
     }
   }
 
-  void _showSpaceItems(BuildContext context, dynamic space) {
+  void _showSpaceItems(BuildContext context, dynamic space) async {
     final itemProvider = context.read<ItemProvider>();
     final spaceProvider = context.read<SpaceProvider>();
     final items = spaceProvider.getItemsInSpace(itemProvider.allItems, space.id);
 
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (context) => DraggableScrollableSheet(
@@ -1349,11 +1416,16 @@ class _SpaceTabState extends State<SpaceTab> {
         ),
       ),
     );
+    
+    // 弹窗关闭后刷新数据
+    if (mounted) {
+      await _refreshData();
+    }
   }
 
   void _showAddSpaceDialog(BuildContext context, SpaceProvider spaceProvider,
-      String houseId, String? parentId) {
-    Navigator.push(
+      String houseId, String? parentId) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => SpaceEditPage(
@@ -1363,11 +1435,15 @@ class _SpaceTabState extends State<SpaceTab> {
         ),
       ),
     );
+    // 返回后刷新数据
+    if (mounted) {
+      await _refreshData();
+    }
   }
 
   void _editSpace(
-      BuildContext context, SpaceProvider spaceProvider, dynamic space) {
-    Navigator.push(
+      BuildContext context, SpaceProvider spaceProvider, dynamic space) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => SpaceEditPage(
@@ -1376,6 +1452,10 @@ class _SpaceTabState extends State<SpaceTab> {
         ),
       ),
     );
+    // 返回后刷新数据
+    if (mounted) {
+      await _refreshData();
+    }
   }
 
   void _deleteSpace(

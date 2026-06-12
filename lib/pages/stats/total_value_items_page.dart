@@ -56,13 +56,116 @@ class _TotalValueItemsPageState extends State<TotalValueItemsPage> {
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: items.length,
+            itemCount: items.length + 1,
             itemBuilder: (context, index) {
-              return _buildItemCard(context, items[index]);
+              if (index == 0) {
+                return _buildSummaryCard(context, items);
+              }
+              return _buildItemCard(context, items[index - 1]);
             },
           );
         },
       ),
+    );
+  }
+
+  Widget _buildSummaryCard(BuildContext context, List<Item> items) {
+    // 计算所有物品的总价
+    double totalPrice = 0;
+    for (var item in items) {
+      totalPrice += (item.price ?? 0) * item.quantity;
+    }
+
+    // 需要异步获取每个物品的购买日期并计算日均成本
+    return FutureBuilder<List<DateTime?>>(
+      future: Future.wait(items.map((item) => _getPurchaseDate(item.id))),
+      builder: (context, snapshot) {
+        double totalDailyCost = 0;
+
+        if (snapshot.hasData) {
+          final purchaseDates = snapshot.data!;
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+
+          for (int i = 0; i < items.length; i++) {
+            final item = items[i];
+            final purchaseDate = purchaseDates[i];
+            if (purchaseDate != null) {
+              final purchaseDay = DateTime(
+                purchaseDate.year,
+                purchaseDate.month,
+                purchaseDate.day,
+              );
+              final daysOwned = today.difference(purchaseDay).inDays;
+              if (daysOwned > 0) {
+                final itemTotalPrice = (item.price ?? 0) * item.quantity;
+                totalDailyCost += itemTotalPrice / daysOwned;
+              }
+            }
+          }
+        }
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          color: Theme.of(context).colorScheme.primaryContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '物品总价',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '¥${totalPrice >= 10000 ? totalPrice.toInt() : totalPrice.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '日均成本',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        totalDailyCost > 0
+                            ? '¥${totalDailyCost.toStringAsFixed(2)}'
+                            : '--',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

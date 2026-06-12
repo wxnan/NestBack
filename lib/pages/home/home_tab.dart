@@ -79,13 +79,17 @@ class _HomeTabState extends State<HomeTab> {
         }
 
         // 当家庭变化或空间数据变化时，设置特殊空间ID
+        // 必须在 post-frame 回调中执行，避免在 build 期间调用 notifyListeners
         if (_lastHouseId != currentHouse.id || _lastSpaceCount != spaceProvider.spaces.length) {
-          print('家庭或空间数据变化，重新设置特殊空间ID');
-          _setSpecialSpaceIds(spaceProvider, itemProvider, currentHouse.id);
-          // 设置空间名称缓存用于搜索
-          _setSpaceNames(spaceProvider, itemProvider);
+          print('家庭或空间数据变化，延迟设置特殊空间ID');
           _lastHouseId = currentHouse.id;
           _lastSpaceCount = spaceProvider.spaces.length;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _setSpecialSpaceIds(spaceProvider, itemProvider, currentHouse.id);
+              _setSpaceNames(spaceProvider, itemProvider);
+            }
+          });
         }
 
         final expiredItems = itemProvider.getExpiredItems(currentHouse.id);
@@ -573,13 +577,21 @@ class _HomeTabState extends State<HomeTab> {
             ],
           ),
           trailing: _buildPropertyValue(context, item),
-          onTap: () {
-            Navigator.push(
+          onTap: () async {
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => ItemDetailPage(item: item),
               ),
             );
+            // 返回后刷新数据
+            if (mounted) {
+              final houseProvider = context.read<HouseProvider>();
+              final currentHouse = houseProvider.currentHouse;
+              if (currentHouse != null) {
+                await context.read<ItemProvider>().loadItems(currentHouse.id);
+              }
+            }
           },
           onLongPress: () {
             _toggleSelectionMode();
@@ -662,13 +674,21 @@ class _HomeTabState extends State<HomeTab> {
       motion: const ScrollMotion(),
       children: [
         SlidableAction(
-          onPressed: (context) {
-            Navigator.push(
+          onPressed: (context) async {
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => ItemDetailPage(item: item, isCopy: true),
               ),
             );
+            // 返回后刷新数据
+            if (mounted) {
+              final houseProvider = context.read<HouseProvider>();
+              final currentHouse = houseProvider.currentHouse;
+              if (currentHouse != null) {
+                await context.read<ItemProvider>().loadItems(currentHouse.id);
+              }
+            }
           },
           backgroundColor: Colors.purple,
           foregroundColor: Colors.white,
@@ -677,13 +697,21 @@ class _HomeTabState extends State<HomeTab> {
           borderRadius: BorderRadius.circular(12),
         ),
         SlidableAction(
-          onPressed: (context) {
-            Navigator.push(
+          onPressed: (context) async {
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => ItemDetailPage(item: item, isSplit: true),
               ),
             );
+            // 返回后刷新数据
+            if (mounted) {
+              final houseProvider = context.read<HouseProvider>();
+              final currentHouse = houseProvider.currentHouse;
+              if (currentHouse != null) {
+                await context.read<ItemProvider>().loadItems(currentHouse.id);
+              }
+            }
           },
           backgroundColor: Colors.blue,
           foregroundColor: Colors.white,

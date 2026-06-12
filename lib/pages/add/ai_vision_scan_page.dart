@@ -207,25 +207,37 @@ class _AiVisionScanPageState extends State<AiVisionScanPage> {
   }
 
   Widget _buildActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: _isProcessing ? null : () => _pickImage(ImageSource.camera),
-            icon: const Icon(Icons.camera_alt),
-            label: const Text('重拍'),
-          ),
+    final bool recognitionFailed = _statusText.startsWith('识别失败');
+    final buttons = <Widget>[
+      Expanded(
+        child: OutlinedButton.icon(
+          onPressed: _isProcessing ? null : () => _pickImage(ImageSource.camera),
+          icon: const Icon(Icons.camera_alt),
+          label: const Text('重拍'),
         ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: OutlinedButton.icon(
+          onPressed: _isProcessing ? null : () => _pickImage(ImageSource.gallery),
+          icon: const Icon(Icons.photo_library),
+          label: const Text('重选'),
+        ),
+      ),
+    ];
+    if (recognitionFailed) {
+      buttons.addAll([
         const SizedBox(width: 12),
         Expanded(
-          child: OutlinedButton.icon(
-            onPressed: _isProcessing ? null : () => _pickImage(ImageSource.gallery),
-            icon: const Icon(Icons.photo_library),
-            label: const Text('重选'),
+          child: FilledButton.icon(
+            onPressed: _isProcessing ? null : _startRecognition,
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text('识别'),
           ),
         ),
-      ],
-    );
+      ]);
+    }
+    return Row(children: buttons);
   }
 
   Widget _buildProcessingIndicator() {
