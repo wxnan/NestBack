@@ -652,6 +652,16 @@ class VisionScanResult {
   final double? price;
   final String description;
   final String imagePath;
+  final int? quantity;
+  final String? unit;
+  // AI聊天录入扩展字段
+  final String? location;
+  final String? purchaseDate;
+  final String? warrantyPeriod;
+  final String? warrantyExpireDate;
+  final String? productionDate;
+  final String? shelfLife;
+  final String? expireDate;
 
   VisionScanResult({
     required this.name,
@@ -664,5 +674,14 @@ class VisionScanResult {
     this.price,
     required this.description,
     required this.imagePath,
+    this.quantity,
+    this.unit,
+    this.location,
+    this.purchaseDate,
+    this.warrantyPeriod,
+    this.warrantyExpireDate,
+    this.productionDate,
+    this.shelfLife,
+    this.expireDate,
   });
 }

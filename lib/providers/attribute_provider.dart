@@ -58,7 +58,9 @@ class AttributeProvider extends ChangeNotifier {
           sortOrder: Value(maxOrder + 1),
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
-        ));
+        ),
+      mode: InsertMode.insertOrIgnore,
+    );
     await loadAttributes();
   }
 

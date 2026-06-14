@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'item_form_page.dart';
 import 'barcode_scanner_page.dart';
 import 'ai_vision_scan_page.dart';
+import 'ai_chat_page.dart';
 import '../home_page.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/ai_provider.dart';
@@ -71,7 +72,7 @@ class _AddTabState extends State<AddTab> {
                       'AI聊天录入',
                       '用自然语言描述，AI帮你整理录入',
                       const Color(0xFF00B5D6),
-                      () => _showFeatureComingSoon(context, 'AI聊天'),
+                      () => _navigateToAiChat(context),
                     ),
                     const SizedBox(height: 16),
                     _buildInputCard(
@@ -285,14 +286,25 @@ class _AddTabState extends State<AddTab> {
     );
   }
 
-  void _showFeatureComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature 功能即将推出，敬请期待！'),
-        action: SnackBarAction(
-          label: '好的',
-          onPressed: () {},
+  void _navigateToAiChat(BuildContext context) {
+    final aiProvider = context.read<AiProviderProvider>();
+    if (aiProvider.defaultChatModelId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('请先在"我的 → AI设置"中配置默认聊天模型'),
+          action: SnackBarAction(
+            label: '去设置',
+            onPressed: () => Navigator.pushNamed(context, '/ai-settings'),
+          ),
         ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AiChatPage(),
       ),
     );
   }

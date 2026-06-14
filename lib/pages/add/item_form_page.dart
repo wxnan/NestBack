@@ -16,12 +16,14 @@ import '../../providers/attribute_provider.dart';
 import '../../database/database.dart';
 import 'barcode_scanner_page.dart';
 import 'ai_vision_scan_page.dart';
+import 'ai_chat_page.dart';
 
 class ItemFormPage extends StatefulWidget {
   final BarcodeScanResult? barcodeResult;
   final VisionScanResult? visionResult;
+  final VisionScanResult? chatResult;
 
-  const ItemFormPage({super.key, this.barcodeResult, this.visionResult});
+  const ItemFormPage({super.key, this.barcodeResult, this.visionResult, this.chatResult});
 
   @override
   State<ItemFormPage> createState() => _ItemFormPageState();
@@ -77,6 +79,10 @@ class _ItemFormPageState extends State<ItemFormPage> {
 
     if (widget.visionResult != null) {
       _applyVisionResult(widget.visionResult!);
+    }
+
+    if (widget.chatResult != null) {
+      _applyChatResult(widget.chatResult!);
     }
   }
 
@@ -324,6 +330,208 @@ class _ItemFormPageState extends State<ItemFormPage> {
       if (result.manufacturer.isNotEmpty) noteParts.add('厂商: ${result.manufacturer}');
       if (result.spec.isNotEmpty) noteParts.add('规格: ${result.spec}');
       if (result.color.isNotEmpty) noteParts.add('颜色: ${result.color}');
+      if (result.description.isNotEmpty) noteParts.add(result.description);
+      if (noteParts.isNotEmpty) {
+        _noteController.text = noteParts.join('\n');
+      }
+    }
+
+    setState(() {});
+  }
+
+  Future<void> _applyChatResult(VisionScanResult result) async {
+    final categoryProvider = context.read<CategoryProvider>();
+    final attributeProvider = context.read<AttributeProvider>();
+    final spaceProvider = context.read<SpaceProvider>();
+    final houseProvider = context.read<HouseProvider>();
+
+    // 设置名称
+    if (result.name.isNotEmpty) {
+      _nameController.text = result.name;
+    }
+
+    // 设置数量
+    if (result.quantity != null && result.quantity! > 0) {
+      _quantityController.text = result.quantity.toString();
+    }
+
+    // 设置单位
+    if (result.unit != null && result.unit!.isNotEmpty) {
+      _unitController.text = result.unit!;
+    }
+
+    // 设置单价
+    if (result.price != null) {
+      _priceController.text = result.price.toString();
+      final quantity = result.quantity ?? 1;
+      _totalPriceController.text = (result.price! * quantity).toStringAsFixed(2);
+    }
+
+    // 匹配位置/空间
+    if (result.location != null && result.location!.isNotEmpty) {
+      final currentHouse = houseProvider.currentHouse;
+      if (currentHouse != null) {
+        final allSpaces = spaceProvider.getAllSpacesExceptSpecial(currentHouse.id);
+        // 精确匹配或模糊匹配空间名称
+        Space? matchedSpace;
+        try {
+          matchedSpace = allSpaces.firstWhere((s) => s.name == result.location);
+        } catch (_) {
+          // 模糊匹配：空间名称包含用户描述的位置
+          try {
+            matchedSpace = allSpaces.firstWhere(
+              (s) => s.name.contains(result.location!) || result.location!.contains(s.name),
+            );
+          } catch (_) {}
+        }
+        if (matchedSpace != null) {
+          setState(() {
+            _selectedSpaceId = matchedSpace!.id;
+          });
+          _onSpaceChanged(matchedSpace);
+        }
+      }
+    }
+
+    // 匹配分类
+    if (result.category.isNotEmpty) {
+      final matchedCategory = categoryProvider.categories.firstWhere(
+        (c) => c.name == result.category,
+        orElse: () => Category(
+          id: '',
+          houseId: '',
+          name: '',
+          icon: null,
+          sortOrder: 0,
+          createdAt: DateTime.now(),
+        ),
+      );
+      if (matchedCategory.id.isNotEmpty) {
+        setState(() {
+          _selectedCategory = matchedCategory.name;
+          _selectedCategoryId = matchedCategory.id;
+        });
+      } else {
+        final otherCategory = categoryProvider.categories.firstWhere(
+          (c) => c.name == '其他',
+          orElse: () => Category(
+            id: '',
+            houseId: '',
+            name: '其他',
+            icon: null,
+            sortOrder: 0,
+            createdAt: DateTime.now(),
+          ),
+        );
+        if (otherCategory.id.isNotEmpty) {
+          setState(() {
+            _selectedCategory = '其他';
+            _selectedCategoryId = otherCategory.id;
+          });
+        }
+      }
+    }
+
+    // 设置封面图片
+    if (result.imagePath.isNotEmpty) {
+      _imagePath = result.imagePath;
+    }
+
+    // 匹配二级分类
+    if (result.subcategory.isNotEmpty && _selectedCategoryId != null) {
+      final subcategories = categoryProvider.getSubcategoriesForCategory(_selectedCategoryId!);
+      final matchedSub = subcategories.firstWhereOrNull(
+        (s) => s.name == result.subcategory,
+      );
+      if (matchedSub != null) {
+        setState(() {
+          _selectedSubcategoryId = matchedSub.id;
+        });
+      } else {
+        final currentHouse = houseProvider.currentHouse;
+        if (currentHouse != null) {
+          await categoryProvider.addSubcategory(
+            categoryId: _selectedCategoryId!,
+            name: result.subcategory,
+          );
+          final newSubs = categoryProvider.getSubcategoriesForCategory(_selectedCategoryId!);
+          final newSub = newSubs.firstWhereOrNull((s) => s.name == result.subcategory);
+          if (newSub != null) {
+            setState(() {
+              _selectedSubcategoryId = newSub.id;
+            });
+          }
+        }
+      }
+    }
+
+    // 填充扩展属性
+    final categoryId = _selectedCategoryId;
+    if (categoryId != null && categoryId.isNotEmpty) {
+      final attributes = await attributeProvider.getAttributesForCategory(categoryId);
+      final attributeNameMap = <String, Attribute>{};
+      for (final attr in attributes) {
+        attributeNameMap[attr.name] = attr;
+      }
+
+      // 将保质期/保修期字符串转换为 "数值|单位" 格式，适配 _buildDurationField
+      String? formatDuration(String? value) {
+        if (value == null || value.isEmpty) return null;
+        final match = RegExp(r'(\d+)\s*(?:个)?\s*(天|月|年)').firstMatch(value);
+        if (match != null) {
+          return '${match.group(1)}|${match.group(2)}';
+        }
+        return value;
+      }
+
+      final fieldMap = <String, String?>{
+        '品牌': result.brand.isNotEmpty ? result.brand : null,
+        '厂商': result.manufacturer.isNotEmpty ? result.manufacturer : null,
+        '规格': result.spec.isNotEmpty ? result.spec : null,
+        '颜色': result.color.isNotEmpty ? result.color : null,
+        '生产日期': result.productionDate,
+        '保质期': formatDuration(result.shelfLife),
+        '过期日期': result.expireDate,
+        '购买日期': result.purchaseDate,
+        '保修期': formatDuration(result.warrantyPeriod),
+        '过保日期': result.warrantyExpireDate,
+      };
+
+      final matchedFieldNames = <String>{};
+      for (final entry in fieldMap.entries) {
+        if (entry.value != null && entry.value!.isNotEmpty) {
+          final attr = attributeNameMap[entry.key];
+          if (attr != null) {
+            _customAttributes[attr.id] = entry.value!;
+            matchedFieldNames.add(entry.key);
+          }
+        }
+      }
+
+      final remarkParts = <String>[];
+      for (final entry in fieldMap.entries) {
+        if (!matchedFieldNames.contains(entry.key) && entry.value != null && entry.value!.isNotEmpty) {
+          remarkParts.add('${entry.key}: ${entry.value}');
+        }
+      }
+      if (result.description.isNotEmpty) {
+        remarkParts.add(result.description);
+      }
+      if (remarkParts.isNotEmpty) {
+        _noteController.text = remarkParts.join('\n');
+      }
+    } else {
+      final noteParts = <String>[];
+      if (result.brand.isNotEmpty) noteParts.add('品牌: ${result.brand}');
+      if (result.manufacturer.isNotEmpty) noteParts.add('厂商: ${result.manufacturer}');
+      if (result.spec.isNotEmpty) noteParts.add('规格: ${result.spec}');
+      if (result.color.isNotEmpty) noteParts.add('颜色: ${result.color}');
+      if (result.productionDate != null) noteParts.add('生产日期: ${result.productionDate}');
+      if (result.shelfLife != null) noteParts.add('保质期: ${result.shelfLife}');
+      if (result.expireDate != null) noteParts.add('过期日期: ${result.expireDate}');
+      if (result.purchaseDate != null) noteParts.add('购买日期: ${result.purchaseDate}');
+      if (result.warrantyPeriod != null) noteParts.add('保修期: ${result.warrantyPeriod}');
+      if (result.warrantyExpireDate != null) noteParts.add('过保日期: ${result.warrantyExpireDate}');
       if (result.description.isNotEmpty) noteParts.add(result.description);
       if (noteParts.isNotEmpty) {
         _noteController.text = noteParts.join('\n');
@@ -1476,6 +1684,20 @@ class _ItemFormPageState extends State<ItemFormPage> {
             ),
           ],
         );
+      case 'link':
+        return TextFormField(
+          initialValue: currentValue,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            prefixIcon: const Icon(Icons.link),
+            hintText: '请输入链接地址',
+          ),
+          keyboardType: TextInputType.url,
+          maxLines: 1,
+          onChanged: (value) => _customAttributes[attribute.id] = value,
+        );
       default:
         return TextFormField(
           initialValue: currentValue,
@@ -1939,11 +2161,16 @@ class _ItemFormPageState extends State<ItemFormPage> {
           _enableLowStockReminder = false;
         });
       } else {
-        // 保存返回：AI识图录入返回识图页面，其他返回上一页
+        // 保存返回：AI识图录入返回识图页面，AI聊天录入返回聊天页面，其他返回上一页
         if (widget.visionResult != null) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const AiVisionScanPage()),
+          );
+        } else if (widget.chatResult != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const AiChatPage()),
           );
         } else {
           Navigator.pop(context);

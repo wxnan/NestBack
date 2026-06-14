@@ -139,27 +139,44 @@ class HouseProvider extends ChangeNotifier {
   Future<void> _createDefaultCategories(String houseId) async {
     final now = DateTime.now();
     final categoryNames = ['食品', '药品', '日用品', '数码', '美妆', '其他'];
-    final existingAttrs = <String, String>{};
+
+    // 全局共享分类/属性，先查数据库已有记录
+    final existingCats = await (_db.select(_db.categories)).get();
+    final catNameToId = {for (var c in existingCats) c.name: c.id};
+    final existingAttrs = await (_db.select(_db.attributes)).get();
+    final attrNameToId = {for (var a in existingAttrs) a.name: a.id};
 
     for (int i = 0; i < categoryNames.length; i++) {
-      final categoryId = const Uuid().v4();
-      await _db.into(_db.categories).insert(CategoriesCompanion.insert(
-            id: categoryId,
-            houseId: houseId,
-            name: categoryNames[i],
-            sortOrder: Value(i),
-            createdAt: now,
-          ));
+      final categoryName = categoryNames[i];
 
-      final attrConfigs = _categoryAttributeConfigs[categoryNames[i]];
+      // 复用已有分类，避免 UNIQUE 冲突
+      String categoryId;
+      if (catNameToId.containsKey(categoryName)) {
+        categoryId = catNameToId[categoryName]!;
+      } else {
+        categoryId = const Uuid().v4();
+        await _db.into(_db.categories).insert(CategoriesCompanion.insert(
+              id: categoryId,
+              houseId: houseId,
+              name: categoryName,
+              sortOrder: Value(i),
+              createdAt: now,
+            ),
+          mode: InsertMode.insertOrIgnore,
+        );
+        catNameToId[categoryName] = categoryId;
+      }
+
+      final attrConfigs = _categoryAttributeConfigs[categoryName];
       if (attrConfigs != null) {
         for (int j = 0; j < attrConfigs.length; j++) {
           final config = attrConfigs[j];
           final attrName = config['name']!;
 
+          // 复用已有属性，避免 UNIQUE 冲突
           String attrId;
-          if (existingAttrs.containsKey(attrName)) {
-            attrId = existingAttrs[attrName]!;
+          if (attrNameToId.containsKey(attrName)) {
+            attrId = attrNameToId[attrName]!;
           } else {
             attrId = const Uuid().v4();
             await _db.into(_db.attributes).insert(AttributesCompanion.insert(
@@ -170,20 +187,28 @@ class HouseProvider extends ChangeNotifier {
                   hint: Value(config['hint']),
                   options: Value(config['options']),
                   required: Value(config['required'] == 'true'),
-                  sortOrder: Value(existingAttrs.length),
+                  sortOrder: Value(attrNameToId.length),
                   createdAt: now,
                   updatedAt: now,
-                ));
-            existingAttrs[attrName] = attrId;
+                ),
+              mode: InsertMode.insertOrIgnore,
+            );
+            attrNameToId[attrName] = attrId;
           }
 
-          await _db.into(_db.categoryAttributes).insert(
-            CategoryAttributesCompanion.insert(
-              categoryId: categoryId,
-              attributeId: attrId,
-              sortOrder: Value(j),
-            ),
-          );
+          // 避免重复关联
+          final existingLink = await (_db.select(_db.categoryAttributes)
+                ..where((t) => t.categoryId.equals(categoryId) & t.attributeId.equals(attrId)))
+              .getSingleOrNull();
+          if (existingLink == null) {
+            await _db.into(_db.categoryAttributes).insert(
+              CategoryAttributesCompanion.insert(
+                categoryId: categoryId,
+                attributeId: attrId,
+                sortOrder: Value(j),
+              ),
+            );
+          }
         }
       }
     }

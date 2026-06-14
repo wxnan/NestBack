@@ -93,55 +93,61 @@ class ImportExportService {
       throw Exception('无效的归巢导出文件');
     }
 
-    final idMapping = <String, String>{};
-    final now = DateTime.now();
+    return await _db.transaction(() async {
+      final idMapping = <String, String>{};
+      final now = DateTime.now();
 
-    await _importSpaces(data, targetHouseId, idMapping, now);
+      await _importSpaces(data, targetHouseId, idMapping, now);
 
-    await _importCategories(data, targetHouseId, idMapping, now);
+      await _importCategories(data, targetHouseId, idMapping, now);
 
-    await _importSubcategories(data, idMapping, now);
+      await _importSubcategories(data, idMapping, now);
 
-    await _importTags(data, targetHouseId, idMapping, now);
+      await _importTags(data, targetHouseId, idMapping, now);
 
-    await _importAttributes(data, targetHouseId, idMapping, now);
+      await _importAttributes(data, targetHouseId, idMapping, now);
 
-    await _importCategoryAttributes(data, idMapping);
+      await _importCategoryAttributes(data, idMapping);
 
-    final importResult = await _importItems(data, targetHouseId, idMapping, now);
+      final importResult = await _importItems(data, targetHouseId, idMapping, now);
 
-    return ImportResult(
-      success: true,
-      houseId: targetHouseId,
-      houseName: '',
-      itemCount: importResult.itemCount,
-      spaceCount: importResult.spaceCount,
-      message: '成功导入 ${importResult.itemCount} 个物品',
-      idMapping: idMapping,
-    );
+      return ImportResult(
+        success: true,
+        houseId: targetHouseId,
+        houseName: '',
+        itemCount: importResult.itemCount,
+        spaceCount: importResult.spaceCount,
+        message: '成功导入 ${importResult.itemCount} 个物品',
+        idMapping: idMapping,
+      );
+    });
   }
 
-  Future<void> _importSpaces(Map<String, dynamic> data, String houseId, 
+  Future<void> _importSpaces(Map<String, dynamic> data, String houseId,
       Map<String, String> idMapping, DateTime now) async {
     final existingSpaces = await (_db.select(_db.spaces)
           ..where((t) => t.houseId.equals(houseId)))
         .get();
-    final existingSpaceNames = {for (var s in existingSpaces) s.name: s};
+    final processedNames = <String, String>{};
+    for (var s in existingSpaces) {
+      processedNames[s.name] = s.id;
+    }
 
     final spacesData = (data['spaces'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
-    
+
     for (final s in spacesData) {
       final oldId = s['id'] as String;
       final name = s['name'] as String;
       final parentId = s['parentId'] as String?;
 
-      if (existingSpaceNames.containsKey(name)) {
-        idMapping[oldId] = existingSpaceNames[name]!.id;
+      if (processedNames.containsKey(name)) {
+        idMapping[oldId] = processedNames[name]!;
         continue;
       }
 
       final newId = const Uuid().v4();
       idMapping[oldId] = newId;
+      processedNames[name] = newId;
 
       String? mappedParentId;
       if (parentId != null) {
@@ -164,26 +170,29 @@ class ImportExportService {
     }
   }
 
-  Future<void> _importCategories(Map<String, dynamic> data, String houseId, 
+  Future<void> _importCategories(Map<String, dynamic> data, String houseId,
       Map<String, String> idMapping, DateTime now) async {
-    final existingCategories = await (_db.select(_db.categories)
-          ..where((t) => t.houseId.equals(houseId)))
-        .get();
-    final existingCategoryNames = {for (var c in existingCategories) c.name: c};
+    // 全局共享分类，不加 houseId 过滤
+    final existingCategories = await (_db.select(_db.categories)).get();
+    final processedNames = <String, String>{};
+    for (var c in existingCategories) {
+      processedNames[c.name] = c.id;
+    }
 
     final categoriesData = (data['categories'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
-    
+
     for (final c in categoriesData) {
       final oldId = c['id'] as String;
       final name = c['name'] as String;
 
-      if (existingCategoryNames.containsKey(name)) {
-        idMapping[oldId] = existingCategoryNames[name]!.id;
+      if (processedNames.containsKey(name)) {
+        idMapping[oldId] = processedNames[name]!;
         continue;
       }
 
       final newId = const Uuid().v4();
       idMapping[oldId] = newId;
+      processedNames[name] = newId;
 
       await _db.into(_db.categories).insert(CategoriesCompanion.insert(
         id: newId,
@@ -192,7 +201,9 @@ class ImportExportService {
         icon: Value(c['icon'] as String?),
         sortOrder: Value(c['sortOrder'] as int? ?? 0),
         createdAt: _parseDateTime(c['createdAt']) ?? now,
-      ));
+      ),
+        mode: InsertMode.insertOrIgnore,
+      );
     }
   }
 
@@ -226,30 +237,35 @@ class ImportExportService {
         name: name,
         sortOrder: Value(sc['sortOrder'] as int? ?? 0),
         createdAt: _parseDateTime(sc['createdAt']) ?? now,
-      ));
+      ),
+        mode: InsertMode.insertOrIgnore,
+      );
     }
   }
 
-  Future<void> _importTags(Map<String, dynamic> data, String houseId, 
+  Future<void> _importTags(Map<String, dynamic> data, String houseId,
       Map<String, String> idMapping, DateTime now) async {
-    final existingTags = await (_db.select(_db.tags)
-          ..where((t) => t.houseId.equals(houseId)))
-        .get();
-    final existingTagNames = {for (var t in existingTags) t.name: t};
+    // 全局共享标签，不加 houseId 过滤
+    final existingTags = await (_db.select(_db.tags)).get();
+    final processedNames = <String, String>{};
+    for (var t in existingTags) {
+      processedNames[t.name] = t.id;
+    }
 
     final tagsData = (data['tags'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
-    
+
     for (final t in tagsData) {
       final oldId = t['id'] as String;
       final name = t['name'] as String;
 
-      if (existingTagNames.containsKey(name)) {
-        idMapping[oldId] = existingTagNames[name]!.id;
+      if (processedNames.containsKey(name)) {
+        idMapping[oldId] = processedNames[name]!;
         continue;
       }
 
       final newId = const Uuid().v4();
       idMapping[oldId] = newId;
+      processedNames[name] = newId;
 
       await _db.into(_db.tags).insert(TagsCompanion.insert(
         id: newId,
@@ -257,30 +273,35 @@ class ImportExportService {
         name: name,
         sortOrder: Value(t['sortOrder'] as int? ?? 0),
         createdAt: _parseDateTime(t['createdAt']) ?? now,
-      ));
+      ),
+        mode: InsertMode.insertOrIgnore,
+      );
     }
   }
 
-  Future<void> _importAttributes(Map<String, dynamic> data, String houseId, 
+  Future<void> _importAttributes(Map<String, dynamic> data, String houseId,
       Map<String, String> idMapping, DateTime now) async {
-    final existingAttributes = await (_db.select(_db.attributes)
-          ..where((t) => t.houseId.equals(houseId)))
-        .get();
-    final existingAttrNames = {for (var a in existingAttributes) a.name: a};
+    // 全局共享属性，不加 houseId 过滤
+    final existingAttributes = await (_db.select(_db.attributes)).get();
+    final processedNames = <String, String>{};
+    for (var a in existingAttributes) {
+      processedNames[a.name] = a.id;
+    }
 
     final attributesData = (data['attributes'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
-    
+
     for (final a in attributesData) {
       final oldId = a['id'] as String;
       final name = a['name'] as String;
 
-      if (existingAttrNames.containsKey(name)) {
-        idMapping[oldId] = existingAttrNames[name]!.id;
+      if (processedNames.containsKey(name)) {
+        idMapping[oldId] = processedNames[name]!;
         continue;
       }
 
       final newId = const Uuid().v4();
       idMapping[oldId] = newId;
+      processedNames[name] = newId;
 
       await _db.into(_db.attributes).insert(AttributesCompanion.insert(
         id: newId,
@@ -293,7 +314,9 @@ class ImportExportService {
         sortOrder: Value(a['sortOrder'] as int? ?? 0),
         createdAt: _parseDateTime(a['createdAt']) ?? now,
         updatedAt: now,
-      ));
+      ),
+        mode: InsertMode.insertOrIgnore,
+      );
     }
   }
 
@@ -390,35 +413,34 @@ class ImportExportService {
       final newItemId = idMapping[oldItemId];
       if (newItemId == null) continue;
 
+      // 统一解析 attributeId（内部属性保持原样，自定义属性映射到新ID）
+      final String resolvedAttributeId;
+      if (oldAttributeId.startsWith('_')) {
+        resolvedAttributeId = oldAttributeId;
+      } else {
+        final mapped = idMapping[oldAttributeId];
+        if (mapped == null) continue;
+        resolvedAttributeId = mapped;
+      }
+
       final existingItemAttr = await (_db.select(_db.itemAttributes)
-            ..where((t) => t.itemId.equals(newItemId) & t.attributeId.equals(oldAttributeId)))
+            ..where((t) => t.itemId.equals(newItemId) & t.attributeId.equals(resolvedAttributeId)))
           .get();
-      
+
       if (existingItemAttr.isNotEmpty) {
         await (_db.update(_db.itemAttributes)
-              ..where((t) => t.itemId.equals(newItemId) & t.attributeId.equals(oldAttributeId)))
+              ..where((t) => t.itemId.equals(newItemId) & t.attributeId.equals(resolvedAttributeId)))
             .write(ItemAttributesCompanion(
               value: Value(ia['value'] as String?),
             ));
         continue;
       }
 
-      if (oldAttributeId.startsWith('_')) {
-        await _db.into(_db.itemAttributes).insert(ItemAttributesCompanion.insert(
-          itemId: newItemId,
-          attributeId: oldAttributeId,
-          value: Value(ia['value'] as String?),
-        ));
-      } else {
-        final newAttributeId = idMapping[oldAttributeId];
-        if (newAttributeId != null) {
-          await _db.into(_db.itemAttributes).insert(ItemAttributesCompanion.insert(
-            itemId: newItemId,
-            attributeId: newAttributeId,
-            value: Value(ia['value'] as String?),
-          ));
-        }
-      }
+      await _db.into(_db.itemAttributes).insert(ItemAttributesCompanion.insert(
+        itemId: newItemId,
+        attributeId: resolvedAttributeId,
+        value: Value(ia['value'] as String?),
+      ));
     }
 
     return (itemCount: itemCount, spaceCount: spaceCount);
@@ -602,184 +624,215 @@ class ImportExportService {
 
     if (nameIdx == -1) throw Exception('CSV缺少"名称"列');
 
-    final spaces = await (_db.select(_db.spaces)
-          ..where((t) => t.houseId.equals(houseId)))
-        .get();
-    final pendingSpace = spaces.firstWhere(
-      (s) => s.type == 'pending',
-      orElse: () => spaces.first,
-    );
+    return await _db.transaction(() async {
+      final spaces = await (_db.select(_db.spaces)
+            ..where((t) => t.houseId.equals(houseId)))
+          .get();
+      final pendingSpace = spaces.firstWhere(
+        (s) => s.type == 'pending',
+        orElse: () => spaces.first,
+      );
 
-    final categories = await (_db.select(_db.categories)
-          ..where((t) => t.houseId.equals(houseId)))
-        .get();
-    final categoryNameMap = {for (var c in categories) c.name: c};
+      // 全局共享分类，不加 houseId 过滤
+      final categories = await (_db.select(_db.categories)).get();
+      final categoryNameMap = {for (var c in categories) c.name: c};
 
-    final existingSubcategories = await (_db.select(_db.subcategories)).get();
-    final subcategoryNameMap = <String, Map<String, Subcategory>>{};
-    for (final sc in existingSubcategories) {
-      subcategoryNameMap.putIfAbsent(sc.categoryId, () => {});
-      subcategoryNameMap[sc.categoryId]![sc.name] = sc;
-    }
-
-    final existingAttributes = await (_db.select(_db.attributes)
-          ..where((t) => t.houseId.equals(houseId)))
-        .get();
-    final attrNameToId = {for (var a in existingAttributes) a.name: a.id};
-
-    final baseHeaderNames = {
-      '名称', '数量', '单位', '单价', '总价', '分类', '二级分类', '位置', '标签', '最低库存提醒',
-      '备注', '创建时间', '更新时间',
-    };
-
-    final extendedAttrNames = <String>[];
-    for (final h in header) {
-      final trimmed = h.trim();
-      if (!baseHeaderNames.contains(trimmed) && trimmed.isNotEmpty) {
-        extendedAttrNames.add(trimmed);
+      final existingSubcategories = await (_db.select(_db.subcategories)).get();
+      final subcategoryNameMap = <String, Map<String, Subcategory>>{};
+      for (final sc in existingSubcategories) {
+        subcategoryNameMap.putIfAbsent(sc.categoryId, () => {});
+        subcategoryNameMap[sc.categoryId]![sc.name] = sc;
       }
-    }
 
-    int itemCount = 0;
-    final now = DateTime.now();
+      // 全局共享属性，不加 houseId 过滤
+      final existingAttributes = await (_db.select(_db.attributes)).get();
+      final attrNameToId = {for (var a in existingAttributes) a.name: a.id};
 
-    for (int i = 1; i < rows.length; i++) {
-      final row = rows[i];
-      final name = _getCellValue(row, nameIdx);
-      if (name.isEmpty) continue;
+      final baseHeaderNames = {
+        '名称', '数量', '单位', '单价', '总价', '分类', '二级分类', '位置', '标签', '最低库存提醒',
+        '备注', '创建时间', '更新时间',
+      };
 
-      final quantityStr = _getCellValue(row, quantityIdx);
-      final quantity = int.tryParse(quantityStr) ?? 1;
-      final unit = _getCellValue(row, unitIdx);
-      final priceStr = _getCellValue(row, priceIdx);
-      final price = double.tryParse(priceStr);
-      final categoryName = _getCellValue(row, categoryIdx);
-      final spacePath = _getCellValue(row, spaceIdx);
-      final tagsStr = _getCellValue(row, tagsIdx);
-      final note = _getCellValue(row, noteIdx);
+      final extendedAttrNames = <String>[];
+      for (final h in header) {
+        final trimmed = h.trim();
+        if (!baseHeaderNames.contains(trimmed) && trimmed.isNotEmpty) {
+          extendedAttrNames.add(trimmed);
+        }
+      }
 
-      String spaceId = pendingSpace.id;
-      if (spacePath.isNotEmpty) {
-        final pathParts = spacePath.split('>').map((e) => e.trim()).toList();
-        String? parentId;
-        for (final partName in pathParts) {
-          final existingSpace = spaces.firstWhere(
-            (s) => s.name == partName && s.houseId == houseId && s.parentId == parentId,
-            orElse: () => spaces.firstWhere((s) => false, orElse: () => pendingSpace),
-          );
-          if (existingSpace.name == partName) {
-            spaceId = existingSpace.id;
-            parentId = existingSpace.id;
-          } else {
-            final newSpaceId = const Uuid().v4();
-            await _db.into(_db.spaces).insert(SpacesCompanion.insert(
-              id: newSpaceId,
-              houseId: houseId,
-              name: partName,
-              parentId: Value(parentId),
-              type: parentId == null ? 'room' : 'container',
-              createdAt: now,
-              updatedAt: now,
-            ));
-            spaceId = newSpaceId;
-            parentId = newSpaceId;
+      int itemCount = 0;
+      final now = DateTime.now();
+
+      for (int i = 1; i < rows.length; i++) {
+        final row = rows[i];
+        final name = _getCellValue(row, nameIdx).trim();
+        if (name.isEmpty) continue;
+
+        final quantityStr = _getCellValue(row, quantityIdx);
+        final quantity = int.tryParse(quantityStr) ?? 1;
+        final unit = _getCellValue(row, unitIdx);
+        final priceStr = _getCellValue(row, priceIdx);
+        final price = double.tryParse(priceStr);
+        final categoryName = _getCellValue(row, categoryIdx).trim();
+        final spacePath = _getCellValue(row, spaceIdx);
+        final tagsStr = _getCellValue(row, tagsIdx);
+        final note = _getCellValue(row, noteIdx);
+
+        String spaceId = pendingSpace.id;
+        if (spacePath.isNotEmpty) {
+          final pathParts = spacePath.split('>').map((e) => e.trim()).toList();
+          String? parentId;
+          for (final partName in pathParts) {
+            final existingSpace = spaces.firstWhere(
+              (s) => s.name == partName && s.houseId == houseId && s.parentId == parentId,
+              orElse: () => spaces.firstWhere((s) => false, orElse: () => pendingSpace),
+            );
+            if (existingSpace.name == partName) {
+              spaceId = existingSpace.id;
+              parentId = existingSpace.id;
+            } else {
+              final newSpaceId = const Uuid().v4();
+              await _db.into(_db.spaces).insert(SpacesCompanion.insert(
+                id: newSpaceId,
+                houseId: houseId,
+                name: partName,
+                parentId: Value(parentId),
+                type: parentId == null ? 'room' : 'container',
+                createdAt: now,
+                updatedAt: now,
+              ));
+              // 将新创建的空间加入列表，防止同一次导入中重复创建
+              final newSpace = await (_db.select(_db.spaces)
+                    ..where((t) => t.id.equals(newSpaceId)))
+                  .getSingle();
+              spaces.add(newSpace);
+              spaceId = newSpaceId;
+              parentId = newSpaceId;
+            }
           }
         }
-      }
 
-      String? categoryId;
-      if (categoryName.isNotEmpty) {
-        final existingCategory = categoryNameMap[categoryName];
-        if (existingCategory != null) {
-          categoryId = existingCategory.id;
-        } else {
-          categoryId = const Uuid().v4();
-          await _db.into(_db.categories).insert(CategoriesCompanion.insert(
-            id: categoryId,
-            houseId: houseId,
-            name: categoryName,
-            createdAt: now,
-          ));
-          categoryNameMap[categoryName] = await (_db.select(_db.categories)
-                ..where((t) => t.id.equals(categoryId!)))
-              .getSingle();
+        String? categoryId;
+        if (categoryName.isNotEmpty) {
+          final existingCategory = categoryNameMap[categoryName];
+          if (existingCategory != null) {
+            categoryId = existingCategory.id;
+          } else {
+            categoryId = const Uuid().v4();
+            await _db.into(_db.categories).insert(CategoriesCompanion.insert(
+              id: categoryId,
+              houseId: houseId,
+              name: categoryName,
+              createdAt: now,
+            ),
+              mode: InsertMode.insertOrIgnore,
+            );
+            categoryNameMap[categoryName] = await (_db.select(_db.categories)
+                  ..where((t) => t.id.equals(categoryId!)))
+                .getSingle();
+          }
         }
-      }
 
-      final subcategoryName = _getCellValue(row, subcategoryIdx);
-      String? subcategoryId;
-      if (subcategoryName.isNotEmpty && categoryId != null) {
-        final catSubcats = subcategoryNameMap[categoryId] ?? {};
-        final existingSubcat = catSubcats[subcategoryName];
-        if (existingSubcat != null) {
-          subcategoryId = existingSubcat.id;
-        } else {
-          subcategoryId = const Uuid().v4();
-          await _db.into(_db.subcategories).insert(SubcategoriesCompanion.insert(
-            id: subcategoryId,
-            categoryId: categoryId,
-            name: subcategoryName,
-            createdAt: now,
-          ));
-          subcategoryNameMap.putIfAbsent(categoryId, () => {});
-          subcategoryNameMap[categoryId]![subcategoryName] = Subcategory(
-            id: subcategoryId,
-            categoryId: categoryId,
-            name: subcategoryName,
-            sortOrder: 0,
-            createdAt: now,
+        final subcategoryName = _getCellValue(row, subcategoryIdx).trim();
+        String? subcategoryId;
+        if (subcategoryName.isNotEmpty && categoryId != null) {
+          final catSubcats = subcategoryNameMap[categoryId] ?? {};
+          final existingSubcat = catSubcats[subcategoryName];
+          if (existingSubcat != null) {
+            subcategoryId = existingSubcat.id;
+          } else {
+            subcategoryId = const Uuid().v4();
+            await _db.into(_db.subcategories).insert(SubcategoriesCompanion.insert(
+              id: subcategoryId,
+              categoryId: categoryId,
+              name: subcategoryName,
+              createdAt: now,
+            ),
+              mode: InsertMode.insertOrIgnore,
+            );
+            subcategoryNameMap.putIfAbsent(categoryId, () => {});
+            subcategoryNameMap[categoryId]![subcategoryName] = Subcategory(
+              id: subcategoryId,
+              categoryId: categoryId,
+              name: subcategoryName,
+              sortOrder: 0,
+              createdAt: now,
+            );
+          }
+        }
+
+        final lowStockValue = _getCellValue(row, lowStockIdx);
+        final enableLowStock = lowStockValue == '是' || lowStockValue.toLowerCase() == 'true';
+
+        final extendedValues = <String, String>{};
+        for (final attrName in extendedAttrNames) {
+          final idx = _findIndex(header, attrName);
+          final val = _getCellValue(row, idx);
+          if (val.isNotEmpty) {
+            extendedValues[attrName] = val;
+          }
+        }
+
+        final expireDateStr = extendedValues['过期日期'] ?? '';
+        final warrantyExpireDateStr = extendedValues['过保日期'] ?? '';
+        final productionDateStr = extendedValues['生产日期'] ?? '';
+        final shelfLifeStr = extendedValues['保质期'] ?? '';
+
+        DateTime? expireDate = _parseFlexibleDate(expireDateStr);
+        DateTime? warrantyExpireDate = _parseFlexibleDate(warrantyExpireDateStr);
+        DateTime? productionDate = _parseFlexibleDate(productionDateStr);
+        int? shelfLife = int.tryParse(shelfLifeStr);
+
+        String? expireDateSource;
+        DateTime? finalExpireDate;
+
+        if (expireDate != null) {
+          finalExpireDate = expireDate;
+          expireDateSource = 'expire';
+        } else if (warrantyExpireDate != null) {
+          finalExpireDate = warrantyExpireDate;
+          expireDateSource = 'warranty';
+        }
+
+        if (finalExpireDate == null && productionDate != null && shelfLife != null) {
+          finalExpireDate = productionDate.add(Duration(days: shelfLife));
+          expireDateSource = 'expire';
+        }
+
+        final existingItems = await (_db.select(_db.items)
+              ..where((t) => t.houseId.equals(houseId) & t.name.equals(name)))
+            .get();
+
+        String id;
+        if (existingItems.isNotEmpty) {
+          id = existingItems.first.id;
+          await (_db.update(_db.items)..where((t) => t.id.equals(id))).write(
+            ItemsCompanion(
+              spaceId: Value(spaceId),
+              quantity: Value(quantity),
+              unit: Value(unit.isEmpty ? '件' : unit),
+              price: Value(price),
+              productionDate: Value(productionDate),
+              shelfLife: Value(shelfLife),
+              expireDate: Value(finalExpireDate),
+              category: Value(categoryName.isNotEmpty ? categoryName : null),
+              categoryId: Value(categoryId),
+              subcategoryId: Value(subcategoryId),
+              tags: Value(tagsStr.isNotEmpty ? tagsStr : null),
+              note: Value(note.isNotEmpty ? note : null),
+              customAttributes: Value(expireDateSource),
+              modifierId: Value('user'),
+              updatedAt: Value(now),
+            ),
           );
-        }
-      }
-
-      final lowStockValue = _getCellValue(row, lowStockIdx);
-      final enableLowStock = lowStockValue == '是' || lowStockValue.toLowerCase() == 'true';
-
-      final extendedValues = <String, String>{};
-      for (final attrName in extendedAttrNames) {
-        final idx = _findIndex(header, attrName);
-        final val = _getCellValue(row, idx);
-        if (val.isNotEmpty) {
-          extendedValues[attrName] = val;
-        }
-      }
-
-      final expireDateStr = extendedValues['过期日期'] ?? '';
-      final warrantyExpireDateStr = extendedValues['过保日期'] ?? '';
-      final productionDateStr = extendedValues['生产日期'] ?? '';
-      final shelfLifeStr = extendedValues['保质期'] ?? '';
-
-      DateTime? expireDate = _parseFlexibleDate(expireDateStr);
-      DateTime? warrantyExpireDate = _parseFlexibleDate(warrantyExpireDateStr);
-      DateTime? productionDate = _parseFlexibleDate(productionDateStr);
-      int? shelfLife = int.tryParse(shelfLifeStr);
-
-      String? expireDateSource;
-      DateTime? finalExpireDate;
-
-      if (expireDate != null) {
-        finalExpireDate = expireDate;
-        expireDateSource = 'expire';
-      } else if (warrantyExpireDate != null) {
-        finalExpireDate = warrantyExpireDate;
-        expireDateSource = 'warranty';
-      }
-
-      if (finalExpireDate == null && productionDate != null && shelfLife != null) {
-        finalExpireDate = productionDate.add(Duration(days: shelfLife));
-        expireDateSource = 'expire';
-      }
-
-      final existingItems = await (_db.select(_db.items)
-            ..where((t) => t.houseId.equals(houseId) & t.name.equals(name)))
-          .get();
-
-      String id;
-      if (existingItems.isNotEmpty) {
-        id = existingItems.first.id;
-        await (_db.update(_db.items)..where((t) => t.id.equals(id))).write(
-          ItemsCompanion(
-            spaceId: Value(spaceId),
+        } else {
+          id = const Uuid().v4();
+          await _db.into(_db.items).insert(ItemsCompanion.insert(
+            id: id,
+            houseId: houseId,
+            spaceId: spaceId,
+            name: name,
             quantity: Value(quantity),
             unit: Value(unit.isEmpty ? '件' : unit),
             price: Value(price),
@@ -792,109 +845,89 @@ class ImportExportService {
             tags: Value(tagsStr.isNotEmpty ? tagsStr : null),
             note: Value(note.isNotEmpty ? note : null),
             customAttributes: Value(expireDateSource),
-            modifierId: Value('user'),
-            updatedAt: Value(now),
-          ),
-        );
-      } else {
-        id = const Uuid().v4();
-        await _db.into(_db.items).insert(ItemsCompanion.insert(
-          id: id,
-          houseId: houseId,
-          spaceId: spaceId,
-          name: name,
-          quantity: Value(quantity),
-          unit: Value(unit.isEmpty ? '件' : unit),
-          price: Value(price),
-          productionDate: Value(productionDate),
-          shelfLife: Value(shelfLife),
-          expireDate: Value(finalExpireDate),
-          category: Value(categoryName.isNotEmpty ? categoryName : null),
-          categoryId: Value(categoryId),
-          subcategoryId: Value(subcategoryId),
-          tags: Value(tagsStr.isNotEmpty ? tagsStr : null),
-          note: Value(note.isNotEmpty ? note : null),
-          customAttributes: Value(expireDateSource),
-          creatorId: 'user',
-          modifierId: 'user',
-          createdAt: now,
-          updatedAt: now,
-        ));
-        itemCount++;
-      }
-
-      await (_db.delete(_db.itemAttributes)
-            ..where((t) => t.itemId.equals(id)))
-          .go();
-
-      final categoryAttrLinked = <String>{};
-
-      for (final entry in extendedValues.entries) {
-        final csvAttrName = entry.key;
-        final attrValue = entry.value;
-
-        if (csvAttrName == '过期日期' || csvAttrName == '过保日期') continue;
-
-        var attrId = attrNameToId[csvAttrName];
-        if (attrId == null) {
-          attrId = const Uuid().v4();
-          await _db.into(_db.attributes).insert(AttributesCompanion.insert(
-            id: attrId,
-            houseId: houseId,
-            name: csvAttrName,
-            type: _inferAttributeType(csvAttrName),
+            creatorId: 'user',
+            modifierId: 'user',
             createdAt: now,
             updatedAt: now,
           ));
-          attrNameToId[csvAttrName] = attrId;
+          itemCount++;
         }
-        final resolvedAttrId = attrId;
 
-        await _db.into(_db.itemAttributes).insert(ItemAttributesCompanion.insert(
-          itemId: id,
-          attributeId: resolvedAttrId,
-          value: Value(attrValue),
-        ));
+        await (_db.delete(_db.itemAttributes)
+              ..where((t) => t.itemId.equals(id)))
+            .go();
 
-        if (categoryId != null) {
-          final catId = categoryId;
-          if (!categoryAttrLinked.contains(resolvedAttrId)) {
-            final existingLink = await (_db.select(_db.categoryAttributes)
-                  ..where((t) => t.categoryId.equals(catId) & t.attributeId.equals(resolvedAttrId)))
-                .get();
-            if (existingLink.isEmpty) {
-              await _db.into(_db.categoryAttributes).insert(CategoryAttributesCompanion.insert(
-                categoryId: catId,
-                attributeId: resolvedAttrId,
-              ));
+        final categoryAttrLinked = <String>{};
+
+        for (final entry in extendedValues.entries) {
+          final csvAttrName = entry.key;
+          final attrValue = entry.value;
+
+          if (csvAttrName == '过期日期' || csvAttrName == '过保日期') continue;
+
+          var attrId = attrNameToId[csvAttrName];
+          if (attrId == null) {
+            attrId = const Uuid().v4();
+            await _db.into(_db.attributes).insert(AttributesCompanion.insert(
+              id: attrId,
+              houseId: houseId,
+              name: csvAttrName,
+              type: _inferAttributeType(csvAttrName),
+              createdAt: now,
+              updatedAt: now,
+            ),
+              mode: InsertMode.insertOrIgnore,
+            );
+            attrNameToId[csvAttrName] = attrId;
+          }
+          final resolvedAttrId = attrId;
+
+          await _db.into(_db.itemAttributes).insert(ItemAttributesCompanion.insert(
+            itemId: id,
+            attributeId: resolvedAttrId,
+            value: Value(attrValue),
+          ));
+
+          if (categoryId != null) {
+            final catId = categoryId;
+            if (!categoryAttrLinked.contains(resolvedAttrId)) {
+              final existingLink = await (_db.select(_db.categoryAttributes)
+                    ..where((t) => t.categoryId.equals(catId) & t.attributeId.equals(resolvedAttrId)))
+                  .get();
+              if (existingLink.isEmpty) {
+                await _db.into(_db.categoryAttributes).insert(CategoryAttributesCompanion.insert(
+                  categoryId: catId,
+                  attributeId: resolvedAttrId,
+                ));
+              }
+              categoryAttrLinked.add(resolvedAttrId);
             }
-            categoryAttrLinked.add(resolvedAttrId);
           }
         }
+
+        if (enableLowStock) {
+          await _db.into(_db.itemAttributes).insert(ItemAttributesCompanion.insert(
+            itemId: id,
+            attributeId: '_low_stock_reminder',
+            value: const Value('true'),
+          ));
+          await _db.into(_db.itemAttributes).insert(ItemAttributesCompanion.insert(
+            itemId: id,
+            attributeId: '_low_stock_threshold',
+            value: const Value('1'),
+          ));
+        }
       }
 
-      if (enableLowStock) {
-        await _db.into(_db.itemAttributes).insert(ItemAttributesCompanion.insert(
-          itemId: id,
-          attributeId: '_low_stock_reminder',
-          value: const Value('true'),
-        ));
-        await _db.into(_db.itemAttributes).insert(ItemAttributesCompanion.insert(
-          itemId: id,
-          attributeId: '_low_stock_threshold',
-          value: const Value('1'),
-        ));
-      }
-    }
-
-    return ImportResult(
-      success: true,
-      houseId: houseId,
-      houseName: '',
-      itemCount: itemCount,
-      spaceCount: 0,
-      message: '成功导入 $itemCount 个物品',
-    );
+      return ImportResult(
+        success: true,
+        houseId: houseId,
+        houseName: '',
+        itemCount: itemCount,
+        spaceCount: 0,
+        message: '成功导入 $itemCount 个物品',
+      );
+    });
   }
 
   Future<String> exportToZip(String houseId) async {
@@ -1200,9 +1233,11 @@ class ImportExportService {
     final dateNames = {'生产日期', '过期日期', '开封日期', '购买日期', '过保日期'};
     final durationNames = {'保质期', '保修期'};
     final multiSelectNames = {'储存方式'};
+    final linkNames = {'链接', '网址', '购买链接', '官网', '参考链接', 'URL'};
     if (dateNames.contains(name)) return 'date';
     if (durationNames.contains(name)) return 'duration';
     if (multiSelectNames.contains(name)) return 'multi_select';
+    if (linkNames.contains(name)) return 'link';
     return 'text';
   }
 }

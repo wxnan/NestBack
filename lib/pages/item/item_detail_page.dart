@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 import '../../database/database.dart';
 import '../../providers/item_provider.dart';
@@ -1312,6 +1313,27 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
             ),
           ],
         );
+      case 'link':
+        return TextFormField(
+          initialValue: currentValue,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            prefixIcon: const Icon(Icons.link),
+            hintText: '请输入链接地址',
+            suffixIcon: currentValue.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.open_in_new),
+                    tooltip: '打开链接',
+                    onPressed: () => _launchUrl(currentValue),
+                  )
+                : null,
+          ),
+          keyboardType: TextInputType.url,
+          maxLines: 1,
+          onChanged: (value) => _customAttributes[attribute.id] = value,
+        );
       default:
         return TextFormField(
           initialValue: currentValue,
@@ -2086,5 +2108,21 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
 
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _launchUrl(String url) async {
+    var uri = Uri.tryParse(url);
+    if (uri == null || (!uri.hasScheme)) {
+      uri = Uri.tryParse('https://$url');
+    }
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('无法打开链接: $url')),
+        );
+      }
+    }
   }
 }

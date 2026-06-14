@@ -23,11 +23,22 @@ class AiProviderProvider extends ChangeNotifier {
   String get defaultChatModelId => _defaultChatModelId;
   String get defaultVisionModelId => _defaultVisionModelId;
 
-  List<AiModel> get enabledModels => _models.where((m) {
-        if (!m.isEnabled) return false;
-        final provider = getProvider(m.providerId);
-        return provider != null && provider.isEnabled && getEffectiveApiKey(provider).isNotEmpty;
-      }).toList();
+  List<AiModel> get enabledModels {
+    final enabled = _models.where((m) {
+      if (!m.isEnabled) return false;
+      final provider = getProvider(m.providerId);
+      return provider != null && provider.isEnabled && getEffectiveApiKey(provider).isNotEmpty;
+    }).toList();
+    // 按提供商顺序排序，同一提供商内按模型sortOrder排序
+    final providerOrder = {for (var i = 0; i < _providers.length; i++) _providers[i].id: i};
+    enabled.sort((a, b) {
+      final orderA = providerOrder[a.providerId] ?? 999999;
+      final orderB = providerOrder[b.providerId] ?? 999999;
+      if (orderA != orderB) return orderA.compareTo(orderB);
+      return a.sortOrder.compareTo(b.sortOrder);
+    });
+    return enabled;
+  }
   List<AiModel> get chatModels => enabledModels;
   List<AiModel> get visionModels => enabledModels.where((m) => m.type == 'vision').toList();
 

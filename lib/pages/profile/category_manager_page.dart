@@ -416,6 +416,10 @@ class _CategoryManagerPageState extends State<CategoryManagerPage> {
         return '单选';
       case 'multi_select':
         return '多选';
+      case 'duration':
+        return '时长';
+      case 'link':
+        return '链接';
       default:
         return type;
     }

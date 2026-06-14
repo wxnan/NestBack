@@ -147,6 +147,8 @@ class AttributeManagerPage extends StatelessWidget {
         return '多选';
       case 'duration':
         return '时长';
+      case 'link':
+        return '链接';
       default:
         return type;
     }
@@ -262,6 +264,7 @@ class AttributeManagerPage extends StatelessWidget {
                     DropdownMenuItem(value: 'select', child: Text('单选')),
                     DropdownMenuItem(value: 'multi_select', child: Text('多选')),
                     DropdownMenuItem(value: 'duration', child: Text('时长')),
+                    DropdownMenuItem(value: 'link', child: Text('链接')),
                   ],
                   onChanged: (value) {
                     setState(() {
@@ -417,6 +420,7 @@ class AttributeManagerPage extends StatelessWidget {
                       DropdownMenuItem(value: 'select', child: Text('单选')),
                       DropdownMenuItem(value: 'multi_select', child: Text('多选')),
                       DropdownMenuItem(value: 'duration', child: Text('时长')),
+                      DropdownMenuItem(value: 'link', child: Text('链接')),
                     ],
                     onChanged: (value) {
                       setState(() {

@@ -46,7 +46,9 @@ class TagProvider extends ChangeNotifier {
       name: name,
       sortOrder: Value(maxOrder + 1),
       createdAt: DateTime.now(),
-    ));
+    ),
+      mode: InsertMode.insertOrIgnore,
+    );
     await loadTags();
   }
 

@@ -60,7 +60,9 @@ class CategoryProvider extends ChangeNotifier {
           icon: Value(icon),
           sortOrder: Value(maxOrder + 1),
           createdAt: DateTime.now(),
-        ));
+        ),
+      mode: InsertMode.insertOrIgnore,
+    );
     await loadCategories();
 
     if (categoryType != null) {
@@ -97,7 +99,9 @@ class CategoryProvider extends ChangeNotifier {
               sortOrder: Value(i),
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),
-            ));
+            ),
+          mode: InsertMode.insertOrIgnore,
+        );
       }
 
       final existingLink = await (_db.select(_db.categoryAttributes)
@@ -193,7 +197,9 @@ class CategoryProvider extends ChangeNotifier {
           icon: Value(icon),
           sortOrder: Value(maxOrder + 1),
           createdAt: DateTime.now(),
-        ));
+        ),
+      mode: InsertMode.insertOrIgnore,
+    );
     await loadCategories();
     await _createDefaultAttributes(houseId, id, categoryType);
   }
@@ -334,7 +340,9 @@ class CategoryProvider extends ChangeNotifier {
           name: name,
           sortOrder: Value(maxOrder + 1),
           createdAt: DateTime.now(),
-        ));
+        ),
+      mode: InsertMode.insertOrIgnore,
+    );
     await loadSubcategories(categoryId);
   }
 

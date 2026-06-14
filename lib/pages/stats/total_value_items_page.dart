@@ -97,9 +97,9 @@ class _TotalValueItemsPageState extends State<TotalValueItemsPage> {
                 purchaseDate.day,
               );
               final daysOwned = today.difference(purchaseDay).inDays;
-              if (daysOwned > 0) {
+              if (daysOwned >= 0) {
                 final itemTotalPrice = (item.price ?? 0) * item.quantity;
-                totalDailyCost += itemTotalPrice / daysOwned;
+                totalDailyCost += itemTotalPrice / (daysOwned == 0 ? 1 : daysOwned);
               }
             }
           }
@@ -251,8 +251,8 @@ class _TotalValueItemsPageState extends State<TotalValueItemsPage> {
         }
 
         String dailyCostText;
-        if (daysOwned > 0) {
-          final dailyCost = totalPrice / daysOwned;
+        if (daysOwned >= 0) {
+          final dailyCost = totalPrice / (daysOwned == 0 ? 1 : daysOwned);
           dailyCostText = '日均 ¥${dailyCost.toStringAsFixed(2)}';
         } else {
           dailyCostText = '日均 --';

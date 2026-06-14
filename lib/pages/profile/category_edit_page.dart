@@ -312,6 +312,8 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
         return '多选';
       case 'duration':
         return '时长';
+      case 'link':
+        return '链接';
       default:
         return type;
     }

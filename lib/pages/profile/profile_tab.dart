@@ -333,7 +333,7 @@ class ProfileTab extends StatelessWidget {
             onTap: () => _launchHelpUrl(),
           ),
           ListTile(
-            leading: const Icon(Icons.feedback),
+            leading: const Icon(Icons.feedback_outlined),
             title: const Text('建议反馈'),
             subtitle: const Text('多种反馈方式可选'),
             trailing: const Icon(Icons.chevron_right),

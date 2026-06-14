@@ -73,6 +73,11 @@ class Categories extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {name},
+      ];
 }
 
 class Subcategories extends Table {
@@ -84,6 +89,11 @@ class Subcategories extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {categoryId, name},
+      ];
 }
 
 class Tags extends Table {
@@ -95,6 +105,11 @@ class Tags extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {name},
+      ];
 }
 
 class Attributes extends Table {
@@ -111,6 +126,11 @@ class Attributes extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {name},
+      ];
 }
 
 class CategoryAttributes extends Table {
@@ -183,7 +203,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration {
@@ -241,6 +261,18 @@ class AppDatabase extends _$AppDatabase {
         if (from < 14) {
           // v14: Spaces 添加 defaultCategoryId 列
           await _addColumnIfNotExists('spaces', 'default_category_id', 'TEXT');
+        }
+        if (from < 15) {
+          // v15: 添加 UNIQUE 约束防止分类/属性/标签重复创建
+          await _deduplicateAndAddUniqueConstraints();
+        }
+        if (from < 16) {
+          // v16: 修正 UNIQUE 约束，按 houseId + name 隔离不同家庭的数据
+          await _fixUniqueConstraintsToIncludeHouseId();
+        }
+        if (from < 17) {
+          // v17: 分类/属性/标签全局共享，UNIQUE 约束改为仅 name
+          await _fixUniqueConstraintsToGlobalName();
         }
       },
     );
@@ -355,6 +387,108 @@ class AppDatabase extends _$AppDatabase {
         )
       );
     ''');
+  }
+
+  /// v15 迁移：去重数据并添加 UNIQUE 约束
+  Future<void> _deduplicateAndAddUniqueConstraints() async {
+    // 1. 去重分类（保留最早创建的），更新引用后删除重复
+    await customStatement('''
+      DELETE FROM categories WHERE id NOT IN (
+        SELECT id FROM categories c1 WHERE c1.rowid = (
+          SELECT MIN(c2.rowid) FROM categories c2 WHERE c2.name = c1.name
+        )
+      );
+    ''');
+    await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_name ON categories (name);');
+
+    // 2. 去重二级分类
+    await customStatement('''
+      DELETE FROM subcategories WHERE id NOT IN (
+        SELECT id FROM subcategories s1 WHERE s1.rowid = (
+          SELECT MIN(s2.rowid) FROM subcategories s2 WHERE s2.category_id = s1.category_id AND s2.name = s1.name
+        )
+      );
+    ''');
+    await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS idx_subcategories_cat_name ON subcategories (category_id, name);');
+
+    // 3. 去重标签
+    await customStatement('''
+      DELETE FROM tags WHERE id NOT IN (
+        SELECT id FROM tags t1 WHERE t1.rowid = (
+          SELECT MIN(t2.rowid) FROM tags t2 WHERE t2.name = t1.name
+        )
+      );
+    ''');
+    await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_name ON tags (name);');
+
+    // 4. 去重属性
+    await customStatement('''
+      DELETE FROM attributes WHERE id NOT IN (
+        SELECT id FROM attributes a1 WHERE a1.rowid = (
+          SELECT MIN(a2.rowid) FROM attributes a2 WHERE a2.name = a1.name
+        )
+      );
+    ''');
+    await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS idx_attributes_name ON attributes (name);');
+
+    // 5. 去重 CategoryAttributes
+    await customStatement('''
+      DELETE FROM category_attributes WHERE rowid NOT IN (
+        SELECT MIN(rowid) FROM category_attributes GROUP BY category_id, attribute_id
+      );
+    ''');
+  }
+
+  /// v16 迁移：修正 UNIQUE 约束，按 houseId + name 隔离不同家庭的数据
+  Future<void> _fixUniqueConstraintsToIncludeHouseId() async {
+    // 删除 v15 错误创建的全局 name UNIQUE 索引
+    await customStatement('DROP INDEX IF EXISTS idx_categories_name;');
+    await customStatement('DROP INDEX IF EXISTS idx_tags_name;');
+    await customStatement('DROP INDEX IF EXISTS idx_attributes_name;');
+
+    // 创建新的按 houseId + name 的 UNIQUE 索引
+    await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_house_name ON categories (house_id, name);');
+    await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_house_name ON tags (house_id, name);');
+    await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS idx_attributes_house_name ON attributes (house_id, name);');
+  }
+
+  /// v17 迁移：分类/属性/标签全局共享，UNIQUE 约束改为仅 name
+  Future<void> _fixUniqueConstraintsToGlobalName() async {
+    // 删除 v16 的 houseId+name 索引
+    await customStatement('DROP INDEX IF EXISTS idx_categories_house_name;');
+    await customStatement('DROP INDEX IF EXISTS idx_tags_house_name;');
+    await customStatement('DROP INDEX IF EXISTS idx_attributes_house_name;');
+
+    // 去重：同名记录只保留最早创建的，更新引用后删除重复
+    // 1. 去重分类
+    await customStatement('''
+      DELETE FROM categories WHERE id NOT IN (
+        SELECT id FROM categories c1 WHERE c1.rowid = (
+          SELECT MIN(c2.rowid) FROM categories c2 WHERE c2.name = c1.name
+        )
+      );
+    ''');
+    await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_name ON categories (name);');
+
+    // 2. 去重标签
+    await customStatement('''
+      DELETE FROM tags WHERE id NOT IN (
+        SELECT id FROM tags t1 WHERE t1.rowid = (
+          SELECT MIN(t2.rowid) FROM tags t2 WHERE t2.name = t1.name
+        )
+      );
+    ''');
+    await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_name ON tags (name);');
+
+    // 3. 去重属性
+    await customStatement('''
+      DELETE FROM attributes WHERE id NOT IN (
+        SELECT id FROM attributes a1 WHERE a1.rowid = (
+          SELECT MIN(a2.rowid) FROM attributes a2 WHERE a2.name = a1.name
+        )
+      );
+    ''');
+    await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS idx_attributes_name ON attributes (name);');
   }
 }
 
