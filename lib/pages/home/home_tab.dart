@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:drift/drift.dart' as drift;
 import 'dart:io';
+import 'dart:math' as math;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/house_provider.dart';
 import '../../providers/item_provider.dart';
 import '../../providers/category_provider.dart';
@@ -10,9 +12,11 @@ import '../../providers/space_provider.dart';
 import '../../providers/tag_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/attribute_provider.dart';
 import '../../database/database.dart';
 import '../item/item_detail_page.dart';
 import '../notification/notification_page.dart';
+import '../stats/total_value_items_page.dart';
 import 'expired_items_page.dart';
 import 'restock_page.dart';
 
@@ -26,6 +30,7 @@ class HomeTab extends StatefulWidget {
 class _HomeTabState extends State<HomeTab> {
   final TextEditingController _searchController = TextEditingController();
   String _sortBy = 'createdAt';
+  String _displayMode = 'default'; // default, expire, price
   String? _lastHouseId;
   int _lastSpaceCount = 0;
   bool _isSelectionMode = false;
@@ -60,6 +65,27 @@ class _HomeTabState extends State<HomeTab> {
     setState(() {
       _selectedItemIds.clear();
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDisplayMode();
+  }
+
+  Future<void> _loadDisplayMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedMode = prefs.getString('home_display_mode');
+    if (savedMode != null && mounted) {
+      setState(() {
+        _displayMode = savedMode;
+      });
+    }
+  }
+
+  Future<void> _saveDisplayMode(String mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('home_display_mode', mode);
   }
 
   @override
@@ -159,7 +185,7 @@ class _HomeTabState extends State<HomeTab> {
                     ),
                   ),
                 _buildStatisticsBanner(
-                  context, filteredExpiredItems.length, filteredExpiringItems.length),
+                  context, filteredExpiredItems.length, filteredExpiringItems.length, itemProvider.items),
                 _buildSearchBar(context, itemProvider),
                 const SizedBox(height: 8),
                 _buildCategoryFilter(context, categoryProvider, itemProvider),
@@ -189,95 +215,282 @@ class _HomeTabState extends State<HomeTab> {
                   fontWeight: FontWeight.w600,
                 ),
           ),
-          _buildSortDropdown(context, itemProvider),
+          Row(
+            children: [
+              _buildModeButton(context, itemProvider),
+              _buildSortButton(context, itemProvider),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSortDropdown(BuildContext context, ItemProvider itemProvider) {
-    final sortOptions = {
-      'createdAt': '最近添加',
-      'expireDate': '最近过期',
-      'updatedAt': '最近修改',
+  Widget _buildModeButton(BuildContext context, ItemProvider itemProvider) {
+    final modeOptions = {
+      'default': '默认模式',
+      'expire': '过期模式',
+      'price': '价格模式',
     };
-
-    return DropdownButton<String>(
-      value: _sortBy,
-      underline: const SizedBox(),
-      items: sortOptions.entries.map((entry) {
-        return DropdownMenuItem<String>(
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.view_module_outlined),
+      tooltip: '模式: ${modeOptions[_displayMode] ?? _displayMode}',
+      onSelected: (value) {
+        setState(() {
+          _displayMode = value;
+        });
+        _saveDisplayMode(value);
+      },
+      itemBuilder: (context) => modeOptions.entries.map((entry) {
+        return PopupMenuItem<String>(
           value: entry.key,
-          child: Text(entry.value),
+          child: Row(
+            children: [
+              if (_displayMode == entry.key)
+                Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary)
+              else
+                const SizedBox(width: 18),
+              const SizedBox(width: 8),
+              Text(entry.value),
+            ],
+          ),
         );
       }).toList(),
-      onChanged: (value) {
-        if (value != null) {
-          setState(() {
-            _sortBy = value;
-          });
-          itemProvider.setSortBy(value, ascending: value == 'expireDate');
-        }
+    );
+  }
+
+  Widget _buildSortButton(BuildContext context, ItemProvider itemProvider) {
+    final sortOptions = {
+      'createdAt': '最近添加',
+      'updatedAt': '最近修改',
+      'expireDate': '最近过期',
+      'price': '最高价格',
+    };
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.sort),
+      tooltip: '排序: ${sortOptions[_sortBy] ?? _sortBy}',
+      onSelected: (value) {
+        setState(() {
+          _sortBy = value;
+        });
+        itemProvider.setSortBy(value, ascending: value == 'expireDate');
+      },
+      itemBuilder: (context) => sortOptions.entries.map((entry) {
+        return PopupMenuItem<String>(
+          value: entry.key,
+          child: Row(
+            children: [
+              if (_sortBy == entry.key)
+                Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary)
+              else
+                const SizedBox(width: 18),
+              const SizedBox(width: 8),
+              Text(entry.value),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildStatisticsBanner(
+      BuildContext context, int expiredCount, int expiringCount, List<dynamic> items) {
+    if (_displayMode == 'default') {
+      return const SizedBox(height: 16);
+    }
+
+    if (_displayMode == 'expire') {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                context,
+                '已经过期',
+                '$expiredCount件',
+                const LinearGradient(
+                  colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                Colors.white,
+                () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ExpiredItemsPage(isExpiring: false),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildStatCard(
+                context,
+                '即将过期',
+                '$expiringCount件',
+                const LinearGradient(
+                  colors: [Color(0xFFFFB347), Color(0xFFFF8C00)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                Colors.white,
+                () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ExpiredItemsPage(isExpiring: true),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // price mode
+    final totalPrice = items.fold(0.0, (sum, item) => sum + (item.price ?? 0) * item.quantity);
+    return FutureBuilder<double>(
+      future: _calculateTotalDailyCost(items),
+      builder: (context, snapshot) {
+        final dailyCost = snapshot.data ?? 0.0;
+        final value1 = '¥${totalPrice >= 10000 ? totalPrice.toInt() : totalPrice.toStringAsFixed(2)}';
+        final value2 = dailyCost > 0 ? '¥${dailyCost.toStringAsFixed(2)}' : '¥--';
+        final screenWidth = MediaQuery.of(context).size.width;
+        final cardWidth = (screenWidth - 32 - 12) / 2 - 32; // padding 16*2 + gap 12 + card padding 16*2
+        final fontSize = _calculateUniformFontSize([value1, value2], cardWidth);
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  context,
+                  '物品总价',
+                  value1,
+                  const LinearGradient(
+                    colors: [Color(0xFF2196F3), Color(0xFF64B5F6)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  Colors.white,
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const TotalValueItemsPage(),
+                      ),
+                    );
+                  },
+                  fontSize: fontSize,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  context,
+                  '日均成本',
+                  value2,
+                  const LinearGradient(
+                    colors: [Color(0xFF4CAF50), Color(0xFF81C784)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  Colors.white,
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const TotalValueItemsPage(),
+                      ),
+                    );
+                  },
+                  fontSize: fontSize,
+                ),
+              ),
+            ],
+          ),
+        );
       },
     );
   }
 
-    Widget _buildStatisticsBanner(
-      BuildContext context, int expiredCount, int expiringCount) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildStatCard(
-              context,
-              '已经过期',
-              expiredCount,
-              const LinearGradient(
-                colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              Colors.white,
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ExpiredItemsPage(isExpiring: false),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard(
-              context,
-              '即将过期',
-              expiringCount,
-              const LinearGradient(
-                colors: [Color(0xFFFFB347), Color(0xFFFF8C00)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              Colors.white,
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ExpiredItemsPage(isExpiring: true),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+  Future<double> _calculateTotalDailyCost(List<dynamic> items) async {
+    final attributeProvider = context.read<AttributeProvider>();
+    final itemProvider = context.read<ItemProvider>();
+
+    if (attributeProvider.attributes.isEmpty) {
+      await attributeProvider.loadAttributes();
+    }
+
+    final purchaseDateAttr = attributeProvider.attributes.firstWhere(
+      (a) => a.name == '购买日期',
+      orElse: () => Attribute(
+        id: '',
+        houseId: '',
+        name: '',
+        type: '',
+        hint: null,
+        options: null,
+        required: false,
+        sortOrder: 0,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       ),
     );
+
+    if (purchaseDateAttr.id.isEmpty) return 0.0;
+
+    double totalDailyCost = 0.0;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    for (final item in items) {
+      final itemTotalPrice = (item.price ?? 0) * item.quantity;
+      if (itemTotalPrice <= 0) continue;
+
+      final attrs = await itemProvider.getItemAttributes(item.id);
+      final dateStr = attrs[purchaseDateAttr.id];
+      if (dateStr == null || dateStr.isEmpty) continue;
+
+      try {
+        final purchaseDate = DateTime.parse(dateStr);
+        final purchaseDay = DateTime(purchaseDate.year, purchaseDate.month, purchaseDate.day);
+        final daysOwned = today.difference(purchaseDay).inDays;
+        if (daysOwned >= 0) {
+          totalDailyCost += itemTotalPrice / (daysOwned == 0 ? 1 : daysOwned);
+        }
+      } catch (_) {
+        continue;
+      }
+    }
+
+    return totalDailyCost;
   }
 
-  Widget _buildStatCard(BuildContext context, String title, int count,
-      LinearGradient gradient, Color textColor, VoidCallback onTap) {
+  double _calculateUniformFontSize(List<String> values, double maxWidth, {double baseFontSize = 32}) {
+    final maxTextWidth = values.map((value) {
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: value,
+          style: TextStyle(fontSize: baseFontSize, fontWeight: FontWeight.bold),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      return textPainter.width;
+    }).reduce(math.max);
+
+    if (maxTextWidth <= maxWidth) return baseFontSize;
+    return baseFontSize * (maxWidth / maxTextWidth);
+  }
+
+  Widget _buildStatCard(BuildContext context, String title, String value,
+      LinearGradient gradient, Color textColor, VoidCallback onTap, {double? fontSize}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -306,12 +519,16 @@ class _HomeTabState extends State<HomeTab> {
               ),
             ),
             const SizedBox(height: 4),
-            Text(
-              '${count}件',
-              style: TextStyle(
-                color: textColor,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: fontSize ?? 32,
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 1,
               ),
             ),
           ],
@@ -489,7 +706,7 @@ class _HomeTabState extends State<HomeTab> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '点击录入"+"添加物品',
+                  '点击录入"+"添加物品\n支持滑动和长按操作',
                   style: TextStyle(color: Colors.grey[400], fontSize: 14),
                 ),
               ],
@@ -502,6 +719,13 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
+  String _getItemDisplayMode(dynamic item) {
+    if (_displayMode != 'default') return _displayMode;
+    if (item.expireDate != null) return 'expire';
+    if (item.price != null && item.price! > 0) return 'price';
+    return 'expire';
+  }
+
   Widget _buildItemCard(
       BuildContext context, dynamic item, ItemProvider itemProvider, SpaceProvider spaceProvider) {
     final space = spaceProvider.spaces.firstWhere(
@@ -511,6 +735,7 @@ class _HomeTabState extends State<HomeTab> {
     final spacePath = _getSpacePath(space, spaceProvider);
     final isExpired = item.expireDate != null && item.expireDate!.isBefore(DateTime.now());
     final isSelected = _selectedItemIds.contains(item.id);
+    final itemDisplayMode = _getItemDisplayMode(item);
 
     if (_isSelectionMode) {
       return Card(
@@ -546,6 +771,10 @@ class _HomeTabState extends State<HomeTab> {
           onTap: () => _toggleItemSelection(item.id),
         ),
       );
+    }
+
+    if (itemDisplayMode == 'price') {
+      return _buildPriceItemCard(context, item, itemProvider, spaceProvider, isExpired);
     }
 
     return Card(
@@ -600,6 +829,179 @@ class _HomeTabState extends State<HomeTab> {
         ),
       ),
     );
+  }
+
+  Widget _buildPriceItemCard(BuildContext context, dynamic item, ItemProvider itemProvider,
+      SpaceProvider spaceProvider, bool isExpired) {
+    final totalPrice = (item.price ?? 0) * item.quantity;
+    final attributeProvider = context.read<AttributeProvider>();
+
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _getPriceItemCardData(item, attributeProvider, itemProvider),
+      builder: (context, snapshot) {
+        final data = snapshot.data ?? {};
+        final hasPurchaseDate = data['hasPurchaseDate'] == true;
+        final hasUsageCount = data['hasUsageCount'] == true;
+        final daysOwned = data['daysOwned'] as int? ?? 0;
+        final usageCount = data['usageCount'] as int? ?? 0;
+
+        final List<String> subtitleLines = [];
+        if (hasPurchaseDate) {
+          final dailyCost = daysOwned > 0 ? totalPrice / daysOwned : totalPrice;
+          subtitleLines.add('¥${dailyCost.toStringAsFixed(2)} × $daysOwned天');
+        }
+        if (hasUsageCount) {
+          final costPerUse = usageCount > 0 ? totalPrice / usageCount : totalPrice;
+          subtitleLines.add('¥${costPerUse.toStringAsFixed(2)} × $usageCount次');
+        }
+        if (subtitleLines.isEmpty) {
+          subtitleLines.add('¥${item.price?.toStringAsFixed(2) ?? "0.00"} × ${item.quantity}件');
+        }
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Slidable(
+            startActionPane: _buildLeftSlideActions(context, item, itemProvider, spaceProvider, isExpired),
+            endActionPane: _buildRightSlideActions(context, item, itemProvider, spaceProvider, isExpired),
+            child: InkWell(
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ItemDetailPage(item: item),
+                  ),
+                );
+                if (mounted) {
+                  final houseProvider = context.read<HouseProvider>();
+                  final currentHouse = houseProvider.currentHouse;
+                  if (currentHouse != null) {
+                    await context.read<ItemProvider>().loadItems(currentHouse.id);
+                  }
+                }
+              },
+              onLongPress: () {
+                _toggleSelectionMode();
+                _toggleItemSelection(item.id);
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    _buildItemImage(context, item),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.name,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          ...subtitleLines.map((line) => Text(
+                            line,
+                            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                          )),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '¥${totalPrice >= 10000 ? totalPrice.toInt() : totalPrice.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          maxLines: 1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> _getPriceItemCardData(dynamic item,
+      AttributeProvider attributeProvider, ItemProvider itemProvider) async {
+    if (attributeProvider.attributes.isEmpty) {
+      await attributeProvider.loadAttributes();
+    }
+
+    final purchaseDateAttr = attributeProvider.attributes.firstWhere(
+      (a) => a.name == '购买日期',
+      orElse: () => Attribute(
+        id: '',
+        houseId: '',
+        name: '',
+        type: '',
+        hint: null,
+        options: null,
+        required: false,
+        sortOrder: 0,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+    final usageCountAttr = attributeProvider.attributes.firstWhere(
+      (a) => a.name == '使用次数',
+      orElse: () => Attribute(
+        id: '',
+        houseId: '',
+        name: '',
+        type: '',
+        hint: null,
+        options: null,
+        required: false,
+        sortOrder: 0,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    final attrs = await itemProvider.getItemAttributes(item.id);
+    final result = <String, dynamic>{};
+
+    if (purchaseDateAttr.id.isNotEmpty && attrs.containsKey(purchaseDateAttr.id)) {
+      final dateStr = attrs[purchaseDateAttr.id];
+      if (dateStr != null && dateStr.isNotEmpty) {
+        try {
+          final purchaseDate = DateTime.parse(dateStr);
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+          final purchaseDay = DateTime(purchaseDate.year, purchaseDate.month, purchaseDate.day);
+          final daysOwned = today.difference(purchaseDay).inDays;
+          if (daysOwned >= 0) {
+            result['hasPurchaseDate'] = true;
+            result['daysOwned'] = daysOwned;
+          }
+        } catch (_) {}
+      }
+    }
+
+    if (usageCountAttr.id.isNotEmpty && attrs.containsKey(usageCountAttr.id)) {
+      final countStr = attrs[usageCountAttr.id];
+      if (countStr != null && countStr.isNotEmpty) {
+        final count = int.tryParse(countStr);
+        if (count != null && count >= 0) {
+          result['hasUsageCount'] = true;
+          result['usageCount'] = count;
+        }
+      }
+    }
+
+    return result;
   }
 
   ActionPane? _buildLeftSlideActions(BuildContext context, dynamic item, ItemProvider itemProvider, 
@@ -670,6 +1072,26 @@ class _HomeTabState extends State<HomeTab> {
         ],
       );
     }
+
+    // 价格模式下右侧滑动改为使用+1
+    if (_displayMode == 'price') {
+      return ActionPane(
+        motion: const ScrollMotion(),
+        children: [
+          SlidableAction(
+            onPressed: (ctx) async {
+              await _handleIncrementUsage(ctx, item);
+            },
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            // icon: Icons.add,
+            label: '使用+1',
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ],
+      );
+    }
+
     return ActionPane(
       motion: const ScrollMotion(),
       children: [
@@ -721,6 +1143,65 @@ class _HomeTabState extends State<HomeTab> {
         ),
       ],
     );
+  }
+
+  Future<void> _handleIncrementUsage(BuildContext context, dynamic item) async {
+    final attributeProvider = context.read<AttributeProvider>();
+    final itemProvider = context.read<ItemProvider>();
+
+    if (attributeProvider.attributes.isEmpty) {
+      await attributeProvider.loadAttributes();
+    }
+
+    final usageCountAttr = attributeProvider.attributes.firstWhere(
+      (a) => a.name == '使用次数',
+      orElse: () => Attribute(
+        id: '',
+        houseId: '',
+        name: '',
+        type: '',
+        hint: null,
+        options: null,
+        required: false,
+        sortOrder: 0,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    final attrs = await itemProvider.getItemAttributes(item.id);
+    bool hasUsageCount = false;
+    if (usageCountAttr.id.isNotEmpty && item.categoryId != null) {
+      final db = context.read<AppDatabase>();
+      final links = await (db.select(db.categoryAttributes)
+            ..where((t) => t.categoryId.equals(item.categoryId!) & t.attributeId.equals(usageCountAttr.id)))
+          .get();
+      hasUsageCount = links.isNotEmpty;
+    }
+
+    if (!hasUsageCount) {
+      if (!context.mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('提示'),
+          content: const Text('该物品没有"使用次数"属性，无法记录使用次数。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final currentValueStr = attrs[usageCountAttr.id];
+    final currentValue = int.tryParse(currentValueStr ?? '') ?? 0;
+    final newValue = currentValue + 1;
+
+    await itemProvider.setItemAttributeValue(item.id, usageCountAttr.id, newValue.toString());
   }
 
   void _showConfirmDialog(BuildContext context, String title, String message, Future<void> Function() onConfirm) {

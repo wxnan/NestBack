@@ -7,7 +7,6 @@ import '../item/item_detail_page.dart';
 import '../../providers/item_provider.dart';
 import '../../providers/space_provider.dart';
 import '../../providers/house_provider.dart';
-import '../../providers/settings_provider.dart';
 import '../../database/database.dart';
 
 class LowStockItemsPage extends StatefulWidget {
@@ -74,15 +73,15 @@ class _LowStockItemsPageState extends State<LowStockItemsPage> {
               ]
             : null,
       ),
-      body: Consumer4<HouseProvider, ItemProvider, SpaceProvider, SettingsProvider>(
-        builder: (context, houseProvider, itemProvider, spaceProvider, settingsProvider, _) {
+      body: Consumer3<HouseProvider, ItemProvider, SpaceProvider>(
+        builder: (context, houseProvider, itemProvider, spaceProvider, _) {
           final currentHouse = houseProvider.currentHouse;
           if (currentHouse == null) {
             return const Center(child: CircularProgressIndicator());
           }
 
           return FutureBuilder<List<Item>>(
-            future: _getLowStockItems(itemProvider, currentHouse.id, settingsProvider.lowStockThreshold),
+            future: _getLowStockItems(itemProvider, currentHouse.id),
             initialData: [],
             builder: (context, snapshot) {
               final lowStockItems = snapshot.data ?? [];
@@ -117,19 +116,21 @@ class _LowStockItemsPageState extends State<LowStockItemsPage> {
     );
   }
 
-  Future<List<Item>> _getLowStockItems(ItemProvider itemProvider, String houseId, int threshold) async {
+  Future<List<Item>> _getLowStockItems(ItemProvider itemProvider, String houseId) async {
     final items = itemProvider.items.where((item) => item.houseId == houseId).toList();
     final lowStockItems = <Item>[];
-    
+
     for (final item in items) {
       final attrs = await itemProvider.getItemAttributes(item.id);
-      if (attrs['_low_stock_reminder'] == 'true') {
-        if (threshold > 0 && item.quantity <= threshold) {
+      final thresholdStr = attrs['_low_stock_threshold'];
+      if (thresholdStr != null && thresholdStr.isNotEmpty) {
+        final threshold = int.tryParse(thresholdStr);
+        if (threshold != null && item.quantity <= threshold) {
           lowStockItems.add(item);
         }
       }
     }
-    
+
     return lowStockItems;
   }
 

@@ -6,9 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:drift/drift.dart';
 import '../database/database.dart';
 import '../providers/settings_provider.dart';
-import '../providers/item_provider.dart';
 import '../main.dart';
-import 'dart:developer';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -207,6 +205,20 @@ class NotificationService {
     }
   }
 
+  Future<int?> _getItemExpireReminderOffset(AppDatabase db, String itemId) async {
+    final attrs = await (db.select(db.attributes)
+          ..where((t) => t.name.equals('过期提醒')))
+        .get();
+    if (attrs.isEmpty) return null;
+
+    final itemAttrs = await (db.select(db.itemAttributes)
+          ..where((t) => t.itemId.equals(itemId) & t.attributeId.equals(attrs.first.id)))
+        .get();
+    if (itemAttrs.isEmpty) return null;
+
+    return int.tryParse(itemAttrs.first.value ?? '');
+  }
+
   Future<void> checkAndScheduleExpireReminders(
     AppDatabase db,
     SettingsProvider settingsProvider,
@@ -250,7 +262,14 @@ class NotificationService {
 
           print('[NotificationService] Processing: ${item.name}, expire: ${item.expireDate}');
 
-          for (final offset in settingsProvider.expireWarningOffsets) {
+          final itemOffset = await _getItemExpireReminderOffset(db, item.id);
+          final offsets = List<int>.from(settingsProvider.expireWarningOffsets);
+          if (itemOffset != null && itemOffset >= 0 && !offsets.contains(itemOffset)) {
+            offsets.add(itemOffset);
+            offsets.sort();
+          }
+
+          for (final offset in offsets) {
             final reminderDate = item.expireDate!.subtract(Duration(days: offset));
 
             DateTime notificationDateTime = DateTime(
@@ -334,7 +353,14 @@ class NotificationService {
         for (final item in items) {
           if (item.expireDate == null) continue;
 
-          for (final offset in settingsProvider.expireWarningOffsets) {
+          final itemOffset = await _getItemExpireReminderOffset(db, item.id);
+          final offsets = List<int>.from(settingsProvider.expireWarningOffsets);
+          if (itemOffset != null && itemOffset >= 0 && !offsets.contains(itemOffset)) {
+            offsets.add(itemOffset);
+            offsets.sort();
+          }
+
+          for (final offset in offsets) {
             final reminderDate = item.expireDate!.subtract(Duration(days: offset));
 
             if (_isSameDay(reminderDate, now)) {

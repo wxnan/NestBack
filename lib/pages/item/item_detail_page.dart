@@ -13,7 +13,7 @@ import '../../providers/attribute_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/house_provider.dart';
 import '../../providers/tag_provider.dart';
-import '../../providers/settings_provider.dart';
+import '../profile/category_edit_page.dart';
 
 class ItemDetailPage extends StatefulWidget {
   final Item item;
@@ -47,7 +47,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   List<String> _selectedTags = [];
   Map<String, String> _customAttributes = {};
   String? _imagePath;
-  bool _enableLowStockReminder = false;
+  final _lowStockThresholdController = TextEditingController();
 
   bool _isCalculating = false;
 
@@ -84,7 +84,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
       if (mounted) {
         setState(() {
           _customAttributes = attrs;
-          _enableLowStockReminder = attrs['_low_stock_reminder'] == 'true';
+          _lowStockThresholdController.text = attrs['_low_stock_threshold'] ?? '';
         });
       }
     });
@@ -97,6 +97,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     _unitController.dispose();
     _priceController.dispose();
     _noteController.dispose();
+    _lowStockThresholdController.dispose();
     super.dispose();
   }
 
@@ -833,19 +834,26 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   }
 
   Widget _buildLowStockReminderSection() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const Text('最低库存提醒'),
-        Switch(
-          value: _enableLowStockReminder,
-          onChanged: (value) {
-            setState(() {
-              _enableLowStockReminder = value;
-            });
-          },
+    return TextFormField(
+      controller: _lowStockThresholdController,
+      decoration: InputDecoration(
+        labelText: '最低库存阈值（选填）',
+        hintText: '数量小于等于该值时提醒',
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
-      ],
+        prefixIcon: const Icon(Icons.notifications_none),
+      ),
+      keyboardType: TextInputType.number,
+      validator: (value) {
+        if (value != null && value.isNotEmpty) {
+          final threshold = int.tryParse(value);
+          if (threshold == null || threshold < 0) {
+            return '请输入有效的非负整数';
+          }
+        }
+        return null;
+      },
     );
   }
 
@@ -1144,9 +1152,32 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '扩展信息',
-                      style: Theme.of(context).textTheme.titleMedium,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '扩展信息',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 18),
+                          tooltip: '编辑分类',
+                          onPressed: () {
+                            final categoryProvider = context.read<CategoryProvider>();
+                            final category = categoryProvider.categories.firstWhereOrNull(
+                              (c) => c.id == _selectedCategoryId,
+                            );
+                            if (category != null) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CategoryEditPage(category: category),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     ...attributes.map((attr) => _buildAttributeField(attr)),
@@ -1918,16 +1949,17 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
         : (warrantyExpireDate != null ? 'warranty' : null);
     final newQuantity = int.tryParse(_quantityController.text) ?? 1;
 
-    // 如果启用了最低库存提醒，添加到自定义属性
-    if (_enableLowStockReminder) {
-      final settingsProvider = context.read<SettingsProvider>();
-      final threshold = settingsProvider.lowStockThreshold;
-      _customAttributes['_low_stock_reminder'] = 'true';
-      _customAttributes['_low_stock_threshold'] = threshold.toString();
+    // 最低库存阈值
+    final thresholdText = _lowStockThresholdController.text.trim();
+    if (thresholdText.isNotEmpty) {
+      final threshold = int.tryParse(thresholdText);
+      if (threshold != null && threshold >= 0) {
+        _customAttributes['_low_stock_threshold'] = threshold.toString();
+      }
     } else {
-      _customAttributes.remove('_low_stock_reminder');
       _customAttributes.remove('_low_stock_threshold');
     }
+    _customAttributes.remove('_low_stock_reminder');
 
     // 复制模式：创建新物品，原物品不变
     if (widget.isCopy) {

@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const String _keyExpiringThresholdDays = 'expiring_threshold_days';
-  static const String _keyLowStockThreshold = 'low_stock_threshold';
   static const String _keyExpireWarningOffsets = 'expire_warning_offsets';
   static const String _keyExpireNotificationHour = 'expire_notification_hour';
   static const String _keyExpireNotificationMinute = 'expire_notification_minute';
@@ -21,7 +20,6 @@ class SettingsProvider extends ChangeNotifier {
   static const String _keyWebDavEncryptionKey = 'webdav_encryption_key';
 
   int _expiringThresholdDays = 30;
-  int _lowStockThreshold = 1;
   List<int> _expireWarningOffsets = [0, 7];
   TimeOfDay _expireNotificationTime = const TimeOfDay(hour: 9, minute: 0);
   bool _enableExpireNotification = false;
@@ -37,7 +35,6 @@ class SettingsProvider extends ChangeNotifier {
   String _webDavEncryptionKey = '';
 
   int get expiringThresholdDays => _expiringThresholdDays;
-  int get lowStockThreshold => _lowStockThreshold;
   List<int> get expireWarningOffsets => _expireWarningOffsets;
   TimeOfDay get expireNotificationTime => _expireNotificationTime;
   bool get enableExpireNotification => _enableExpireNotification;
@@ -91,8 +88,7 @@ class SettingsProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     
     _expiringThresholdDays = prefs.getInt(_keyExpiringThresholdDays) ?? 30;
-    _lowStockThreshold = prefs.getInt(_keyLowStockThreshold) ?? 1;
-    
+
     final offsetsString = prefs.getString(_keyExpireWarningOffsets);
     if (offsetsString != null) {
       _expireWarningOffsets = offsetsString.split(',').map((s) => int.parse(s)).toList();
@@ -125,13 +121,6 @@ class SettingsProvider extends ChangeNotifier {
     _expiringThresholdDays = days;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyExpiringThresholdDays, days);
-    notifyListeners();
-  }
-
-  Future<void> setLowStockThreshold(int threshold) async {
-    _lowStockThreshold = threshold;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_keyLowStockThreshold, threshold);
     notifyListeners();
   }
 

@@ -11,12 +11,12 @@ import '../../providers/space_provider.dart';
 import '../../providers/item_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/tag_provider.dart';
-import '../../providers/settings_provider.dart';
 import '../../providers/attribute_provider.dart';
 import '../../database/database.dart';
 import 'barcode_scanner_page.dart';
 import 'ai_vision_scan_page.dart';
 import 'ai_chat_page.dart';
+import '../profile/category_edit_page.dart';
 
 class ItemFormPage extends StatefulWidget {
   final BarcodeScanResult? barcodeResult;
@@ -46,7 +46,7 @@ class _ItemFormPageState extends State<ItemFormPage> {
   Map<String, String> _customAttributes = {};
 
   String? _imagePath;
-  bool _enableLowStockReminder = false;
+  final _lowStockThresholdController = TextEditingController();
 
   @override
   void initState() {
@@ -608,6 +608,7 @@ class _ItemFormPageState extends State<ItemFormPage> {
     _priceController.dispose();
     _totalPriceController.dispose();
     _noteController.dispose();
+    _lowStockThresholdController.dispose();
     super.dispose();
   }
 
@@ -1251,19 +1252,26 @@ class _ItemFormPageState extends State<ItemFormPage> {
   }
 
   Widget _buildLowStockReminderSection() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const Text('最低库存提醒'),
-        Switch(
-          value: _enableLowStockReminder,
-          onChanged: (value) {
-            setState(() {
-              _enableLowStockReminder = value;
-            });
-          },
+    return TextFormField(
+      controller: _lowStockThresholdController,
+      decoration: InputDecoration(
+        labelText: '最低库存阈值（选填）',
+        hintText: '数量小于等于该值时提醒',
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
-      ],
+        prefixIcon: const Icon(Icons.notifications_none),
+      ),
+      keyboardType: TextInputType.number,
+      validator: (value) {
+        if (value != null && value.isNotEmpty) {
+          final threshold = int.tryParse(value);
+          if (threshold == null || threshold < 0) {
+            return '请输入有效的非负整数';
+          }
+        }
+        return null;
+      },
     );
   }
 
@@ -1514,9 +1522,32 @@ class _ItemFormPageState extends State<ItemFormPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '扩展信息',
-                      style: Theme.of(context).textTheme.titleMedium,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '扩展信息',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 18),
+                          tooltip: '编辑分类',
+                          onPressed: () {
+                            final categoryProvider = context.read<CategoryProvider>();
+                            final category = categoryProvider.categories.firstWhereOrNull(
+                              (c) => c.id == _selectedCategoryId,
+                            );
+                            if (category != null) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CategoryEditPage(category: category),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     ...attributes.map((attr) => _buildAttributeField(attr)),
@@ -2104,11 +2135,12 @@ class _ItemFormPageState extends State<ItemFormPage> {
         ? 'expire'
         : (warrantyExpireDate != null ? 'warranty' : null);
 
-    if (_enableLowStockReminder) {
-      final settingsProvider = context.read<SettingsProvider>();
-      final threshold = settingsProvider.lowStockThreshold;
-      _customAttributes['_low_stock_reminder'] = 'true';
-      _customAttributes['_low_stock_threshold'] = threshold.toString();
+    final thresholdText = _lowStockThresholdController.text.trim();
+    if (thresholdText.isNotEmpty) {
+      final threshold = int.tryParse(thresholdText);
+      if (threshold != null && threshold >= 0) {
+        _customAttributes['_low_stock_threshold'] = threshold.toString();
+      }
     }
 
     await itemProvider.addItem(
@@ -2158,7 +2190,7 @@ class _ItemFormPageState extends State<ItemFormPage> {
           _selectedTags = [];
           _customAttributes = {};
           _imagePath = null;
-          _enableLowStockReminder = false;
+          _lowStockThresholdController.clear();
         });
       } else {
         // 保存返回：AI识图录入返回识图页面，AI聊天录入返回聊天页面，其他返回上一页

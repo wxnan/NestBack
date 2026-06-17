@@ -151,6 +151,11 @@ class ItemProvider extends ChangeNotifier {
         case 'updatedAt':
           result = a.updatedAt.compareTo(b.updatedAt);
           break;
+        case 'price':
+          final aPrice = (a.price ?? 0) * a.quantity;
+          final bPrice = (b.price ?? 0) * b.quantity;
+          result = aPrice.compareTo(bPrice);
+          break;
         case 'createdAt':
         default:
           result = a.createdAt.compareTo(b.createdAt);
@@ -366,13 +371,36 @@ class ItemProvider extends ChangeNotifier {
     return {for (var row in rows) row.attributeId: row.value ?? ''};
   }
 
-  Future<int> getLowStockItemsCount(String houseId, int threshold) async {
+  Future<void> setItemAttributeValue(String itemId, String attributeId, String value) async {
+    final existing = await (_db.select(_db.itemAttributes)
+          ..where((t) => t.itemId.equals(itemId) & t.attributeId.equals(attributeId)))
+        .getSingleOrNull();
+    if (existing != null) {
+      await (_db.update(_db.itemAttributes)
+            ..where((t) => t.itemId.equals(itemId) & t.attributeId.equals(attributeId)))
+          .write(ItemAttributesCompanion(value: Value(value)));
+    } else {
+      await _db.into(_db.itemAttributes).insert(ItemAttributesCompanion.insert(
+            itemId: itemId,
+            attributeId: attributeId,
+            value: Value(value),
+          ));
+    }
+    // 更新缓存
+    _itemAttributes.putIfAbsent(itemId, () => {});
+    _itemAttributes[itemId]![attributeId] = value;
+    notifyListeners();
+  }
+
+  Future<int> getLowStockItemsCount(String houseId) async {
     final items = await (_db.select(_db.items)..where((t) => t.houseId.equals(houseId))).get();
     int count = 0;
     for (final item in items) {
       final attrs = await getItemAttributes(item.id);
-      if (attrs['_low_stock_reminder'] == 'true') {
-        if (threshold > 0 && item.quantity <= threshold) {
+      final thresholdStr = attrs['_low_stock_threshold'];
+      if (thresholdStr != null && thresholdStr.isNotEmpty) {
+        final threshold = int.tryParse(thresholdStr);
+        if (threshold != null && item.quantity <= threshold) {
           count++;
         }
       }

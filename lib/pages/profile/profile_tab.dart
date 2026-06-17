@@ -177,7 +177,7 @@ class ProfileTab extends StatelessWidget {
                   ListTile(
                     leading: const Icon(Icons.notifications),
                     title: const Text('提醒设置'),
-                    subtitle: Text('即将过期${settingsProvider.expiringThresholdDays}天、库存阈值${settingsProvider.lowStockThreshold}'),
+                    subtitle: Text('即将过期${settingsProvider.expiringThresholdDays}天'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _showSettingsManager(context),
                   ),

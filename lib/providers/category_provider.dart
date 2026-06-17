@@ -130,6 +130,7 @@ class CategoryProvider extends ChangeNotifier {
           {'name': '保质期', 'type': 'shelf_life', 'hint': null, 'options': '天;月;年', 'required': false},
           {'name': '过期日期', 'type': 'date', 'hint': null, 'options': null, 'required': false},
           {'name': '开封日期', 'type': 'date', 'hint': null, 'options': null, 'required': false},
+          {'name': '过期提醒', 'type': 'number', 'hint': null, 'options': null, 'required': false},
           {'name': '条形码', 'type': 'text', 'hint': null, 'options': null, 'required': false},
         ];
       case 'medicine':
@@ -141,6 +142,7 @@ class CategoryProvider extends ChangeNotifier {
           {'name': '保质期', 'type': 'shelf_life', 'hint': null, 'options': '天;月;年', 'required': false},
           {'name': '过期日期', 'type': 'date', 'hint': null, 'options': null, 'required': false},
           {'name': '开封日期', 'type': 'date', 'hint': null, 'options': null, 'required': false},
+          {'name': '过期提醒', 'type': 'number', 'hint': null, 'options': null, 'required': false},
           {'name': '条形码', 'type': 'text', 'hint': null, 'options': null, 'required': false},
         ];
       case 'cosmetics':
@@ -152,6 +154,7 @@ class CategoryProvider extends ChangeNotifier {
           {'name': '保质期', 'type': 'shelf_life', 'hint': null, 'options': '天;月;年', 'required': false},
           {'name': '过期日期', 'type': 'date', 'hint': null, 'options': null, 'required': false},
           {'name': '开封日期', 'type': 'date', 'hint': null, 'options': null, 'required': false},
+          {'name': '过期提醒', 'type': 'number', 'hint': null, 'options': null, 'required': false},
           {'name': '条形码', 'type': 'text', 'hint': null, 'options': null, 'required': false},
         ];
       case 'daily':
@@ -167,6 +170,7 @@ class CategoryProvider extends ChangeNotifier {
           {'name': '购买日期', 'type': 'date', 'hint': null, 'options': null, 'required': false},
           {'name': '保修期', 'type': 'warranty', 'hint': null, 'options': '天;月;年', 'required': false},
           {'name': '过保日期', 'type': 'date', 'hint': null, 'options': null, 'required': false},
+          {'name': '使用次数', 'type': 'number', 'hint': null, 'options': null, 'required': false},
           {'name': '条形码', 'type': 'text', 'hint': null, 'options': null, 'required': false},
         ];
       case 'other':

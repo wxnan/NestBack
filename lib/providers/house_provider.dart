@@ -37,6 +37,10 @@ class HouseProvider extends ChangeNotifier {
           orElse: () => _houses.first,
         );
       }
+      // 补全缺失的默认属性和分类关联
+      if (_currentHouse != null) {
+        await _createDefaultCategories(_currentHouse!.id);
+      }
       _isInitialized = true;
       notifyListeners();
     }
@@ -103,6 +107,7 @@ class HouseProvider extends ChangeNotifier {
     {'name': '保质期', 'type': 'duration', 'hint': '产品保质期', 'options': '天;月;年', 'required': 'false'},
     {'name': '过期日期', 'type': 'date', 'hint': '产品过期的日期，可通过生产日期和保质期自动计算', 'options': null, 'required': 'false'},
     {'name': '开封日期', 'type': 'date', 'hint': '产品开封的日期', 'options': null, 'required': 'false'},
+    {'name': '过期提醒', 'type': 'number', 'hint': '过期提前提醒天数', 'options': null, 'required': 'false'},
     {'name': '条形码', 'type': 'text', 'hint': '产品条形码或二维码', 'options': null, 'required': 'false'},
   ];
 
@@ -125,6 +130,7 @@ class HouseProvider extends ChangeNotifier {
       {'name': '购买日期', 'type': 'date', 'hint': '购买产品的日期', 'options': null, 'required': 'false'},
       {'name': '保修期', 'type': 'duration', 'hint': '产品保修期', 'options': '天;月;年', 'required': 'false'},
       {'name': '过保日期', 'type': 'date', 'hint': '保修到期的日期，可通过购买日期和保修期自动计算', 'options': null, 'required': 'false'},
+      {'name': '使用次数', 'type': 'number', 'hint': '产品使用次数，用于计算次均成本', 'options': null, 'required': 'false'},
       {'name': '条形码', 'type': 'text', 'hint': '产品条形码或二维码', 'options': null, 'required': 'false'},
     ],
     '其他': [

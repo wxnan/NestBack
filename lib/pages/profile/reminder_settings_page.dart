@@ -177,34 +177,6 @@ class _ReminderSettingsPageState extends State<ReminderSettingsPage> {
                         ],
                       ),
                     ),
-                    const Divider(),
-                    ListTile(
-                      title: const Text('低库存阈值'),
-                      subtitle: Text('数量≤ ${settingsProvider.lowStockThreshold} 时提醒，设为0则不提醒'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.remove),
-                            onPressed: () {
-                              settingsProvider.setLowStockThreshold(settingsProvider.lowStockThreshold - 1);
-                            },
-                          ),
-                          SizedBox(
-                            width: 40,
-                            child: Center(
-                              child: Text('${settingsProvider.lowStockThreshold}'),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.add),
-                            onPressed: () {
-                              settingsProvider.setLowStockThreshold(settingsProvider.lowStockThreshold + 1);
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),

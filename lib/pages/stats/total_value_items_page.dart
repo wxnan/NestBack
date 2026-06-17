@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:provider/provider.dart';
 import '../item/item_detail_page.dart';
 import '../../providers/item_provider.dart';
@@ -172,122 +173,197 @@ class _TotalValueItemsPageState extends State<TotalValueItemsPage> {
   Widget _buildItemCard(BuildContext context, Item item) {
     final totalPrice = (item.price ?? 0) * item.quantity;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ItemDetailPage(item: item),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              _buildItemImage(context, item),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.name,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    _buildOwnershipInfo(context, item, totalPrice),
-                  ],
-                ),
+    return Slidable(
+      key: ValueKey(item.id),
+      endActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        extentRatio: 0.3,
+        children: [
+          SlidableAction(
+            onPressed: (ctx) => _handleIncrementUsage(ctx, item),
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            // icon: Icons.add,
+            label: '使用+1',
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ],
+      ),
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ItemDetailPage(item: item),
               ),
-              const SizedBox(width: 12),
-              Flexible(
-                child: Text(
-                  '¥${totalPrice >= 10000 ? totalPrice.toInt() : totalPrice.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                _buildItemImage(context, item),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      _buildOwnershipInfo(context, item, totalPrice),
+                    ],
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    '¥${totalPrice >= 10000 ? totalPrice.toInt() : totalPrice.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  Future<void> _handleIncrementUsage(BuildContext context, Item item) async {
+    final attributeProvider = context.read<AttributeProvider>();
+    final itemProvider = context.read<ItemProvider>();
+
+    // 如果属性列表未加载，先加载
+    if (attributeProvider.attributes.isEmpty) {
+      await attributeProvider.loadAttributes();
+    }
+
+    final usageCountAttr = attributeProvider.attributes.firstWhere(
+      (a) => a.name == '使用次数',
+      orElse: () => Attribute(
+        id: '',
+        houseId: '',
+        name: '',
+        type: '',
+        hint: null,
+        options: null,
+        required: false,
+        sortOrder: 0,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    // 检查物品是否已有使用次数属性值
+    final attrs = await itemProvider.getItemAttributes(item.id);
+    bool hasUsageCount = false;
+    if (usageCountAttr.id.isNotEmpty && item.categoryId != null) {
+      final db = context.read<AppDatabase>();
+      final links = await (db.select(db.categoryAttributes)
+            ..where((t) => t.categoryId.equals(item.categoryId!))
+            ..where((t) => t.attributeId.equals(usageCountAttr.id)))
+          .get();
+      hasUsageCount = links.isNotEmpty;
+    }
+
+    if (!hasUsageCount) {
+      if (!context.mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('提示'),
+          content: const Text('该物品没有"使用次数"属性，无法记录使用次数。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final currentValueStr = attrs[usageCountAttr.id];
+    final currentValue = int.tryParse(currentValueStr ?? '') ?? 0;
+    final newValue = currentValue + 1;
+
+    await itemProvider.setItemAttributeValue(item.id, usageCountAttr.id, newValue.toString());
+  }
+
   Widget _buildOwnershipInfo(BuildContext context, Item item, double totalPrice) {
-    return FutureBuilder<DateTime?>(
-      future: _getPurchaseDate(item.id),
+    return FutureBuilder<(DateTime?, int?)>(
+      future: Future.wait([
+        _getPurchaseDate(item.id),
+        _getUsageCount(item.id),
+      ]).then((results) => (results[0] as DateTime?, results[1] as int?)),
       builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data == null) {
+        if (!snapshot.hasData) {
           return Text(
             '单价 ¥${item.price?.toStringAsFixed(2) ?? "0.00"} × ${item.quantity}',
             style: TextStyle(color: Colors.grey[600], fontSize: 13),
           );
         }
 
-        final purchaseDate = snapshot.data!;
-        final now = DateTime.now();
-        final today = DateTime(now.year, now.month, now.day);
-        final purchaseDay = DateTime(purchaseDate.year, purchaseDate.month, purchaseDate.day);
-        final daysOwned = today.difference(purchaseDay).inDays;
+        final purchaseDate = snapshot.data!.$1;
+        final usageCount = snapshot.data!.$2;
 
-        String daysText;
-        if (daysOwned < 0) {
-          daysText = '尚未拥有';
-        } else if (daysOwned == 0) {
-          daysText = '今日购入';
-        } else {
-          daysText = '已拥有$daysOwned天';
+        final children = <Widget>[];
+
+        if (purchaseDate == null && usageCount == null) {
+          children.add(
+            Text(
+              '¥${item.price?.toStringAsFixed(2) ?? "0.00"} × ${item.quantity}件',
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            ),
+          );
         }
 
-        String dailyCostText;
-        if (daysOwned >= 0) {
-          final dailyCost = totalPrice / (daysOwned == 0 ? 1 : daysOwned);
-          dailyCostText = '日均 ¥${dailyCost.toStringAsFixed(2)}';
-        } else {
-          dailyCostText = '日均 --';
+        if (purchaseDate != null) {
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+          final purchaseDay = DateTime(purchaseDate.year, purchaseDate.month, purchaseDate.day);
+          final daysOwned = today.difference(purchaseDay).inDays;
+
+          if (daysOwned >= 0) {
+            final dailyCost = totalPrice / (daysOwned == 0 ? 1 : daysOwned);
+            children.add(
+              Text(
+                '¥${dailyCost.toStringAsFixed(2)} × $daysOwned天',
+                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          }
+        }
+
+        if (usageCount != null && usageCount > 0) {
+          final costPerUse = totalPrice / usageCount;
+          children.add(
+            Text(
+              '¥${costPerUse.toStringAsFixed(2)} × $usageCount次',
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              overflow: TextOverflow.ellipsis,
+            ),
+          );
         }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.schedule, size: 14, color: Colors.grey[500]),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    daysText,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Icon(Icons.trending_down, size: 14, color: Colors.grey[500]),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    dailyCostText,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ],
+          children: children,
         );
       },
     );
@@ -324,6 +400,35 @@ class _TotalValueItemsPageState extends State<TotalValueItemsPage> {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<int?> _getUsageCount(String itemId) async {
+    final attributeProvider = context.read<AttributeProvider>();
+    final itemProvider = context.read<ItemProvider>();
+
+    final usageCountAttr = attributeProvider.attributes.firstWhere(
+      (a) => a.name == '使用次数',
+      orElse: () => Attribute(
+        id: '',
+        houseId: '',
+        name: '',
+        type: '',
+        hint: null,
+        options: null,
+        required: false,
+        sortOrder: 0,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    if (usageCountAttr.id.isEmpty) return null;
+
+    final attrs = await itemProvider.getItemAttributes(itemId);
+    final countStr = attrs[usageCountAttr.id];
+    if (countStr == null || countStr.isEmpty) return null;
+
+    return int.tryParse(countStr);
   }
 
   Widget _buildItemImage(BuildContext context, Item item) {

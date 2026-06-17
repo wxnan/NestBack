@@ -485,13 +485,10 @@ class ImportExportService {
     final attrMap = {for (var a in attributes) a.id: a};
 
     final itemAttrValues = <String, Map<String, String>>{};
-    final lowStockItems = <String>{};
+    final lowStockThresholds = <String, String>{};
     for (final ia in itemAttrs) {
-      if (ia.attributeId == '_low_stock_reminder' && ia.value == 'true') {
-        lowStockItems.add(ia.itemId);
-        continue;
-      }
-      if (ia.attributeId == '_low_stock_threshold') {
+      if (ia.attributeId == '_low_stock_threshold' && ia.value != null && ia.value!.isNotEmpty) {
+        lowStockThresholds[ia.itemId] = ia.value!;
         continue;
       }
       final attrName = attrMap[ia.attributeId]?.name;
@@ -526,7 +523,7 @@ class ImportExportService {
     final csvAttrNames = attrNames.where((name) => !systemHeaderNames.contains(name)).toList();
 
     final baseHeaders = [
-      '名称', '数量', '单位', '单价', '总价', '分类', '二级分类', '位置', '标签', '最低库存提醒',
+      '名称', '数量', '单位', '单价', '总价', '分类', '二级分类', '位置', '标签', '最低库存阈值',
     ];
     final extendedHeaders = csvAttrNames;
     final systemHeaders = ['备注', '创建时间', '更新时间'];
@@ -551,7 +548,7 @@ class ImportExportService {
         subcategoryName,
         getSpacePath(item.spaceId),
         item.tags ?? '',
-        lowStockItems.contains(item.id) ? '是' : '否',
+        lowStockThresholds[item.id] ?? '',
       ];
 
       final extendedRow = <String>[];
@@ -619,7 +616,9 @@ class ImportExportService {
     final subcategoryIdx = _findIndex(header, '二级分类');
     final spaceIdx = _findIndex(header, '位置');
     final tagsIdx = _findIndex(header, '标签');
-    final lowStockIdx = _findIndex(header, '最低库存提醒');
+    final lowStockIdx = _findIndex(header, '最低库存阈值') != -1
+        ? _findIndex(header, '最低库存阈值')
+        : _findIndex(header, '最低库存提醒');
     final noteIdx = _findIndex(header, '备注');
 
     if (nameIdx == -1) throw Exception('CSV缺少"名称"列');
@@ -649,7 +648,7 @@ class ImportExportService {
       final attrNameToId = {for (var a in existingAttributes) a.name: a.id};
 
       final baseHeaderNames = {
-        '名称', '数量', '单位', '单价', '总价', '分类', '二级分类', '位置', '标签', '最低库存提醒',
+        '名称', '数量', '单位', '单价', '总价', '分类', '二级分类', '位置', '标签', '最低库存阈值',
         '备注', '创建时间', '更新时间',
       };
 
@@ -763,7 +762,7 @@ class ImportExportService {
         }
 
         final lowStockValue = _getCellValue(row, lowStockIdx);
-        final enableLowStock = lowStockValue == '是' || lowStockValue.toLowerCase() == 'true';
+        final lowStockThreshold = int.tryParse(lowStockValue);
 
         final extendedValues = <String, String>{};
         for (final attrName in extendedAttrNames) {
@@ -905,16 +904,11 @@ class ImportExportService {
           }
         }
 
-        if (enableLowStock) {
-          await _db.into(_db.itemAttributes).insert(ItemAttributesCompanion.insert(
-            itemId: id,
-            attributeId: '_low_stock_reminder',
-            value: const Value('true'),
-          ));
+        if (lowStockThreshold != null && lowStockThreshold >= 0) {
           await _db.into(_db.itemAttributes).insert(ItemAttributesCompanion.insert(
             itemId: id,
             attributeId: '_low_stock_threshold',
-            value: const Value('1'),
+            value: Value(lowStockThreshold.toString()),
           ));
         }
       }

@@ -61,7 +61,7 @@ class _StatsTabState extends State<StatsTab> {
             items.where((item) => item.price == null).length;
 
         return FutureBuilder<int>(
-          future: itemProvider.getLowStockItemsCount(currentHouse.id, settingsProvider.lowStockThreshold),
+          future: itemProvider.getLowStockItemsCount(currentHouse.id),
           initialData: 0,
           builder: (context, snapshot) {
             final lowStockItems = snapshot.data ?? 0;
