@@ -1442,7 +1442,7 @@ class _HomeTabState extends State<HomeTab> {
 
     final suffix = isWarrantyDate ? '过保' : '过期';
     if (diff < 0) {
-      return '已$suffix';
+      return '已$suffix${-diff}天';
     } else if (diff == 0) {
       return '今日$suffix';
     } else if (diff <= 7) {

@@ -1365,6 +1365,20 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
           maxLines: 1,
           onChanged: (value) => _customAttributes[attribute.id] = value,
         );
+      case 'text':
+        return TextFormField(
+          initialValue: currentValue,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          keyboardType: TextInputType.multiline,
+          textInputAction: TextInputAction.newline,
+          minLines: 2,
+          maxLines: null,
+          onChanged: (value) => _customAttributes[attribute.id] = value,
+        );
       default:
         return TextFormField(
           initialValue: currentValue,

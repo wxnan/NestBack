@@ -368,16 +368,12 @@ class ImportExportService {
       final mappedCategoryId = oldCategoryId != null ? idMapping[oldCategoryId] : null;
       final mappedSubcategoryId = oldSubcategoryId != null ? idMapping[oldSubcategoryId] : null;
 
-      final existingItems = await (_db.select(_db.items)
-            ..where((t) => t.houseId.equals(houseId) & t.name.equals(name)))
-          .get();
-      
-      String newItemId;
-      if (existingItems.isNotEmpty) {
-        newItemId = existingItems.first.id;
-      } else {
-        newItemId = const Uuid().v4();
-        await _db.into(_db.items).insert(ItemsCompanion.insert(
+      // 使用导出文件中的原物品 ID 作为新记录 ID，并以 insertOrReplace 写入。
+      // 这样同名但不同 ID 的物品（如复制出来的物品）都会被保留；
+      // 重复导入同一份备份时也不会产生重复记录，而是覆盖更新。
+      final newItemId = oldId;
+      await _db.into(_db.items).insert(
+        ItemsCompanion.insert(
           id: newItemId,
           houseId: houseId,
           spaceId: mappedSpaceId,
@@ -399,9 +395,10 @@ class ImportExportService {
           modifierId: i['modifierId'] as String? ?? 'user',
           createdAt: _parseDateTime(i['createdAt']) ?? now,
           updatedAt: now,
-        ));
-        itemCount++;
-      }
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+      itemCount++;
 
       idMapping[oldId] = newItemId;
     }
@@ -799,62 +796,34 @@ class ImportExportService {
           expireDateSource = 'expire';
         }
 
-        final existingItems = await (_db.select(_db.items)
-              ..where((t) => t.houseId.equals(houseId) & t.name.equals(name)))
-            .get();
+        // CSV 导入不再按名称去重：同名物品应当作为独立条目导入，
+        // 避免复制出来的同名物品被覆盖合并。
+        final id = const Uuid().v4();
+        await _db.into(_db.items).insert(ItemsCompanion.insert(
+          id: id,
+          houseId: houseId,
+          spaceId: spaceId,
+          name: name,
+          quantity: Value(quantity),
+          unit: Value(unit.isEmpty ? '件' : unit),
+          price: Value(price),
+          productionDate: Value(productionDate),
+          shelfLife: Value(shelfLife),
+          expireDate: Value(finalExpireDate),
+          category: Value(categoryName.isNotEmpty ? categoryName : null),
+          categoryId: Value(categoryId),
+          subcategoryId: Value(subcategoryId),
+          tags: Value(tagsStr.isNotEmpty ? tagsStr : null),
+          note: Value(note.isNotEmpty ? note : null),
+          customAttributes: Value(expireDateSource),
+          creatorId: 'user',
+          modifierId: 'user',
+          createdAt: now,
+          updatedAt: now,
+        ));
+        itemCount++;
 
-        String id;
-        if (existingItems.isNotEmpty) {
-          id = existingItems.first.id;
-          await (_db.update(_db.items)..where((t) => t.id.equals(id))).write(
-            ItemsCompanion(
-              spaceId: Value(spaceId),
-              quantity: Value(quantity),
-              unit: Value(unit.isEmpty ? '件' : unit),
-              price: Value(price),
-              productionDate: Value(productionDate),
-              shelfLife: Value(shelfLife),
-              expireDate: Value(finalExpireDate),
-              category: Value(categoryName.isNotEmpty ? categoryName : null),
-              categoryId: Value(categoryId),
-              subcategoryId: Value(subcategoryId),
-              tags: Value(tagsStr.isNotEmpty ? tagsStr : null),
-              note: Value(note.isNotEmpty ? note : null),
-              customAttributes: Value(expireDateSource),
-              modifierId: Value('user'),
-              updatedAt: Value(now),
-            ),
-          );
-        } else {
-          id = const Uuid().v4();
-          await _db.into(_db.items).insert(ItemsCompanion.insert(
-            id: id,
-            houseId: houseId,
-            spaceId: spaceId,
-            name: name,
-            quantity: Value(quantity),
-            unit: Value(unit.isEmpty ? '件' : unit),
-            price: Value(price),
-            productionDate: Value(productionDate),
-            shelfLife: Value(shelfLife),
-            expireDate: Value(finalExpireDate),
-            category: Value(categoryName.isNotEmpty ? categoryName : null),
-            categoryId: Value(categoryId),
-            subcategoryId: Value(subcategoryId),
-            tags: Value(tagsStr.isNotEmpty ? tagsStr : null),
-            note: Value(note.isNotEmpty ? note : null),
-            customAttributes: Value(expireDateSource),
-            creatorId: 'user',
-            modifierId: 'user',
-            createdAt: now,
-            updatedAt: now,
-          ));
-          itemCount++;
-        }
-
-        await (_db.delete(_db.itemAttributes)
-              ..where((t) => t.itemId.equals(id)))
-            .go();
+        // 新物品没有旧属性，无需清空，直接写入本次属性即可。
 
         final categoryAttrLinked = <String>{};
 

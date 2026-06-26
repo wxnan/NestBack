@@ -1,9 +1,9 @@
 更新日期：2026-06
 
 # 面壁智能 / OpenBMB
-- API地址: https://api.modelbest.cn/v1
-- 调用地址: https://api.modelbest.cn/v1/chat/completions
-- API密钥: sk-pQ8L2zF3XmR5kY9wV4jB7hN1tC6vM0xG3aD5sH2bJ9lK4cZ8
+- API地址: https://api.modelbest.co/v1
+- 调用地址: https://api.modelbest.co/v1/chat/completions
+- API密钥: lis_sk_298cf78155f231c7_DkrDcNLHnK8dJRnfFrJCd4JGDbBLMkHrC3T-wLpvC9zy0BPemsyFuQ
 - 免费额度：官方公开免费的 API 密钥
 - 速率限制: 未知
 - 模型列表:

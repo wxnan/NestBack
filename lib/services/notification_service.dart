@@ -1,9 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:drift/drift.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:android_intent_plus/android_intent.dart';
 import '../database/database.dart';
 import '../providers/settings_provider.dart';
 import '../main.dart';
@@ -19,6 +23,37 @@ class NotificationService {
   bool _initialized = false;
 
   void Function(String title, String body, String type, String? itemId)? onNotificationSent;
+
+  /// 检查是否允许发送通知（Android 13+ 需要运行时权限）
+  Future<bool> _canPostNotifications() async {
+    if (Platform.isAndroid) {
+      final status = await Permission.notification.status;
+      return status.isGranted;
+    }
+    return true;
+  }
+
+  /// 检查是否可以 schedule exact alarm（Android 12+ 需要 SCHEDULE_EXACT_ALARM）
+  Future<bool> _canScheduleExactAlarms() async {
+    if (Platform.isAndroid) {
+      final status = await Permission.scheduleExactAlarm.status;
+      return status.isGranted;
+    }
+    return true;
+  }
+
+  /// 打开系统设置页让用户开启“闹钟与提醒”权限
+  Future<void> openExactAlarmSettings() async {
+    try {
+      const intent = AndroidIntent(
+        action: 'android.settings.REQUEST_SCHEDULE_EXACT_ALARM',
+        data: 'package:com.nestback.shouna',
+      );
+      await intent.launch();
+    } catch (e) {
+      print('[NotificationService] Failed to open alarm settings: $e');
+    }
+  }
 
   Future<void> init() async {
     if (_initialized) return;
@@ -112,13 +147,22 @@ class NotificationService {
       const NotificationDetails notificationDetails =
           NotificationDetails(android: androidDetails);
 
+      // Android 12+ 精确闹钟需要 SCHEDULE_EXACT_ALARM 权限；
+      // 无权限时使用 inexact 模式降级，避免 SecurityException 导致闪退。
+      final canScheduleExact = await _canScheduleExactAlarms();
+      final scheduleMode = canScheduleExact
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexactAllowWhileIdle;
+
+      print('[NotificationService] Using schedule mode: $scheduleMode');
+
       await _notificationsPlugin.zonedSchedule(
         notificationId,
         itemName,
         body,
         scheduledTime,
         notificationDetails,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: scheduleMode,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
       );
@@ -159,6 +203,12 @@ class NotificationService {
 
       const NotificationDetails notificationDetails =
           NotificationDetails(android: androidDetails);
+
+      // Android 13+ 发送通知前检查权限，未授权时静默跳过避免异常
+      if (!await _canPostNotifications()) {
+        print('[NotificationService] Notification permission not granted, skipping show');
+        return;
+      }
 
       await _notificationsPlugin.show(
         notificationId,

@@ -274,7 +274,7 @@ class _StatsTabState extends State<StatsTab> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '低库存提醒',
+                      '库存不足',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Colors.grey[600],
                           ),

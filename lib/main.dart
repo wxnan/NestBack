@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 import 'database/database.dart';
 import 'providers/house_provider.dart';
@@ -16,6 +17,7 @@ import 'pages/home_page.dart';
 import 'pages/home/expired_items_page.dart';
 import 'pages/notification/notification_page.dart';
 import 'utils/app_info.dart';
+import 'utils/version_checker.dart';
 import 'services/notification_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -110,6 +112,7 @@ class _SimpleLoadingScreenState extends State<_SimpleLoadingScreen> {
         };
         await NotificationService().checkAndSendImmediateReminders(db, settingsProvider);
         await NotificationService().checkAndScheduleExpireReminders(db, settingsProvider);
+        await _checkWeeklyUpdate(notificationProvider);
       } catch (e) {
         debugPrint('Notification initialization error: $e');
       }
@@ -196,6 +199,31 @@ class _SimpleLoadingScreenState extends State<_SimpleLoadingScreen> {
         ),
       ),
     );
+  }
+}
+
+Future<void> _checkWeeklyUpdate(NotificationProvider notificationProvider) async {
+  try {
+    final now = DateTime.now();
+    if (now.weekday != DateTime.monday && now.weekday != DateTime.friday) return;
+
+    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final prefs = await SharedPreferences.getInstance();
+    final lastCheck = prefs.getString('last_update_check_date');
+    if (lastCheck == todayStr) return;
+
+    final result = await VersionChecker.checkForUpdate(AppInfo.version).timeout(const Duration(seconds: 5));
+    if (result.hasUpdate) {
+      await notificationProvider.addNotification(
+        title: '发现新版本 ${result.latestVersion}',
+        body: '当前版本 ${result.currentVersion}，可前往“我的 → 关于”查看更新',
+        type: 'update',
+      );
+    }
+
+    await prefs.setString('last_update_check_date', todayStr);
+  } catch (e) {
+    debugPrint('Weekly update check error: $e');
   }
 }
 

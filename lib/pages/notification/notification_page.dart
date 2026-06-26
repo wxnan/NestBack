@@ -187,6 +187,8 @@ class NotificationPage extends StatelessWidget {
         return Icons.event_busy_outlined;
       case 'low_stock':
         return Icons.inventory_2_outlined;
+      case 'update':
+        return Icons.system_update_outlined;
       default:
         return Icons.notifications_outlined;
     }
@@ -198,6 +200,8 @@ class NotificationPage extends StatelessWidget {
         return Colors.orange;
       case 'low_stock':
         return Colors.red;
+      case 'update':
+        return Colors.green;
       default:
         return Colors.blue;
     }

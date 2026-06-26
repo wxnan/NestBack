@@ -68,6 +68,8 @@ class AiProviderProvider extends ChangeNotifier {
     } else {
       // 升级场景：补充缺失的种子数据（如新增的提供商/模型）
       await _seedMissingProviders();
+      // 升级场景：更新内置提供商的 API 地址、内置密钥等配置
+      await _updateBuiltInProviderConfigs();
     }
     notifyListeners();
   }
@@ -123,6 +125,41 @@ class AiProviderProvider extends ChangeNotifier {
       await _loadModels();
       // 如果默认模型未设置，尝试设置
       await _setDefaultModelsIfFirstLaunch();
+    }
+  }
+
+  /// APP 升级后更新内置提供商的配置（API 地址、内置密钥等）
+  Future<void> _updateBuiltInProviderConfigs() async {
+    final now = DateTime.now();
+    bool hasUpdate = false;
+
+    for (final p in _defaultProvidersData) {
+      final name = p['name'] as String;
+      AiProvider? existing;
+      try {
+        existing = _providers.firstWhere((provider) => provider.name == name && provider.isBuiltIn);
+      } catch (_) {
+        existing = null;
+      }
+      if (existing == null) continue;
+
+      final newApiBaseUrl = p['apiBaseUrl'] as String;
+      final newBuiltInApiKey = (p['builtInApiKey'] as String?) ?? '';
+
+      if (existing.apiBaseUrl != newApiBaseUrl || existing.builtInApiKey != newBuiltInApiKey) {
+        await (_db.update(_db.aiProviders)..where((t) => t.id.equals(existing!.id))).write(
+          AiProvidersCompanion(
+            apiBaseUrl: Value(newApiBaseUrl),
+            builtInApiKey: Value(newBuiltInApiKey),
+            updatedAt: Value(now),
+          ),
+        );
+        hasUpdate = true;
+      }
+    }
+
+    if (hasUpdate) {
+      await _loadProviders();
     }
   }
 
@@ -488,11 +525,11 @@ class AiProviderProvider extends ChangeNotifier {
     {
       'key': 'openbmb',
       'name': '面壁智能 / OpenBMB',
-      'apiBaseUrl': 'https://api.modelbest.cn/v1',
+      'apiBaseUrl': 'https://api.modelbest.co/v1',
       'rateLimit': '未知',
       'registerUrl': 'https://github.com/OpenBMB',
       'freeQuota': '官方公开免费的 API 密钥',
-      'builtInApiKey': 'sk-pQ8L2zF3XmR5kY9wV4jB7hN1tC6vM0xG3aD5sH2bJ9lK4cZ8',
+      'builtInApiKey': 'lis_sk_298cf78155f231c7_DkrDcNLHnK8dJRnfFrJCd4JGDbBLMkHrC3T-wLpvC9zy0BPemsyFuQ',
       'isEnabledByDefault': true,
     },
   ];

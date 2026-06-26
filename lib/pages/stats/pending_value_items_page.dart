@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:provider/provider.dart';
 import 'package:drift/drift.dart' as drift;
+import '../home/restock_page.dart';
 import '../item/item_detail_page.dart';
 import '../../providers/item_provider.dart';
 import '../../providers/space_provider.dart';
@@ -170,26 +171,10 @@ class _PendingValueItemsPageState extends State<PendingValueItemsPage> {
     );
   }
 
-  ActionPane _buildLeftSlideActions(BuildContext context, Item item, ItemProvider itemProvider,
+  ActionPane? _buildLeftSlideActions(BuildContext context, Item item, ItemProvider itemProvider,
       SpaceProvider spaceProvider, bool isExpired) {
     if (isExpired) {
-      return ActionPane(
-        motion: const ScrollMotion(),
-        extentRatio: 0.25,
-        children: [
-          SlidableAction(
-            onPressed: (context) => _showConfirmDialog(context, '扔掉物品',
-                '确定将物品移至垃圾桶吗？', () async {
-              await _moveToTrashOrDelete(context, item, itemProvider, spaceProvider, true);
-            }),
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
-            icon: Icons.delete,
-            label: '扔掉',
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ],
-      );
+      return null;
     }
     return ActionPane(
       motion: const ScrollMotion(),
@@ -230,7 +215,16 @@ class _PendingValueItemsPageState extends State<PendingValueItemsPage> {
     if (isExpired) {
       return ActionPane(
         motion: const ScrollMotion(),
+        extentRatio: 0.55,
         children: [
+          SlidableAction(
+            onPressed: (context) => _navigateToRestockPage(context, item),
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+            icon: Icons.refresh,
+            label: '补货',
+            borderRadius: BorderRadius.circular(12),
+          ),
           SlidableAction(
             onPressed: (context) => _showConfirmDialog(context, '扔掉物品',
                 '确定将物品移至垃圾桶吗？', () async {
@@ -279,6 +273,15 @@ class _PendingValueItemsPageState extends State<PendingValueItemsPage> {
           borderRadius: BorderRadius.circular(12),
         ),
       ],
+    );
+  }
+
+  void _navigateToRestockPage(BuildContext context, Item item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RestockPage(item: item),
+      ),
     );
   }
 
@@ -341,15 +344,24 @@ class _PendingValueItemsPageState extends State<PendingValueItemsPage> {
   }
 
   Future<void> _moveToTrashOrDelete(BuildContext ctx, Item item, ItemProvider itemProvider, SpaceProvider spaceProvider, bool forceDelete) async {
-    final space = spaceProvider.spaces.firstWhere(
-      (s) => s.id == item.spaceId,
-      orElse: () => Space(id: '', houseId: '', name: '', type: '', parentId: null, icon: null, createdAt: DateTime.now(), updatedAt: DateTime.now()),
+    final trashSpace = spaceProvider.spaces.firstWhere(
+      (s) => s.houseId == item.houseId && s.type == 'trash',
+      orElse: () => Space(id: '', houseId: item.houseId, name: '垃圾桶', type: 'trash', parentId: null, icon: null, createdAt: DateTime.now(), updatedAt: DateTime.now()),
     );
 
-    if (forceDelete || space.type == 'recycle' || space.type == 'trash') {
-      await itemProvider.permanentDeleteItem(item);
-    } else {
-      await itemProvider.moveToTrash(item);
+    if (trashSpace.id.isEmpty) {
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        const SnackBar(content: Text('未找到垃圾桶空间')),
+      );
+      return;
+    }
+
+    await itemProvider.moveItem(item, trashSpace.id);
+
+    if (mounted) {
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        const SnackBar(content: Text('物品已移至垃圾桶')),
+      );
     }
   }
 
@@ -416,7 +428,7 @@ class _PendingValueItemsPageState extends State<PendingValueItemsPage> {
 
     final suffix = isWarrantyDate ? '过保' : '过期';
     if (diff < 0) {
-      return '已$suffix';
+      return '已$suffix${-diff}天';
     } else if (diff == 0) {
       return '今日$suffix';
     } else {

@@ -46,7 +46,7 @@ class _LowStockItemsPageState extends State<LowStockItemsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isSelectionMode ? '已选择 ${_selectedItemIds.length} 个物品' : '低库存提醒'),
+        title: Text(_isSelectionMode ? '已选择 ${_selectedItemIds.length} 个物品' : '库存不足'),
         leading: _isSelectionMode
             ? IconButton(
                 icon: const Icon(Icons.close),
@@ -94,7 +94,7 @@ class _LowStockItemsPageState extends State<LowStockItemsPage> {
                       Icon(Icons.check_circle_outline, size: 64, color: Colors.grey[400]),
                       const SizedBox(height: 16),
                       Text(
-                        '暂无低库存提醒的物品',
+                        '暂无库存不足的物品',
                         style: TextStyle(color: Colors.grey[600]),
                       ),
                     ],

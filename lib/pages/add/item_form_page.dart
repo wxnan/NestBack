@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'dart:io';
 import '../../providers/house_provider.dart';
 import '../../providers/space_provider.dart';
@@ -12,6 +13,8 @@ import '../../providers/item_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/tag_provider.dart';
 import '../../providers/attribute_provider.dart';
+import '../../providers/settings_provider.dart';
+import '../../providers/ai_provider.dart';
 import '../../database/database.dart';
 import 'barcode_scanner_page.dart';
 import 'ai_vision_scan_page.dart';
@@ -621,11 +624,367 @@ class _ItemFormPageState extends State<ItemFormPage> {
     return null;
   }
 
+  Future<void> _navigateToAiVision(BuildContext context) async {
+    final aiProvider = context.read<AiProviderProvider>();
+    if (aiProvider.defaultVisionModelId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('请先在"我的 → AI设置"中配置默认识图模型'),
+          action: SnackBarAction(
+            label: '去设置',
+            onPressed: () => Navigator.pushNamed(context, '/ai-settings'),
+          ),
+        ),
+      );
+      return;
+    }
+
+    String? imagePath = _imagePath;
+    if (imagePath == null || imagePath.isEmpty) {
+      imagePath = await _pickVisionImage(context);
+    }
+
+    if (imagePath == null || imagePath.isEmpty) return;
+
+    if (!mounted) return;
+
+    if (_imagePath == null || _imagePath!.isEmpty) {
+      setState(() {
+        _imagePath = imagePath;
+      });
+    }
+
+    await _startAiVisionRecognition(imagePath);
+  }
+
+  Future<String?> _pickVisionImage(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('拍照'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('从相册选择'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return null;
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: source, maxWidth: 2400, maxHeight: 2400);
+    if (pickedFile == null) return null;
+
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final targetPath = '${appDir.path}/$fileName';
+
+      await _compressAndSaveImage(pickedFile.path, targetPath);
+      return targetPath;
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('图片处理失败：$e')),
+        );
+      }
+      return null;
+    }
+  }
+
+  Future<void> _startAiVisionRecognition(String imagePath) async {
+    final aiProvider = context.read<AiProviderProvider>();
+    final categoryProvider = context.read<CategoryProvider>();
+
+    final visionModel = aiProvider.getModel(aiProvider.defaultVisionModelId);
+    if (visionModel == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('识图模型不存在，请重新配置')),
+        );
+      }
+      return;
+    }
+
+    final provider = aiProvider.getProvider(visionModel.providerId);
+    if (provider == null || aiProvider.getEffectiveApiKey(provider).isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('提供商未配置 API Key，请先配置')),
+        );
+      }
+      return;
+    }
+
+    bool dialogOpen = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('正在识别物品...'),
+          ],
+        ),
+      ),
+    ).then((_) => dialogOpen = false);
+
+    try {
+      final imageBytes = await File(imagePath).readAsBytes();
+      final base64Image = base64Encode(imageBytes);
+
+      final baseUrl = provider.apiBaseUrl.replaceAll(RegExp(r'/+$'), '');
+      final apiPath = provider.apiPath.startsWith('/') ? provider.apiPath : '/${provider.apiPath}';
+      final url = Uri.parse('$baseUrl$apiPath');
+
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${aiProvider.getEffectiveApiKey(provider)}',
+      };
+
+      if (provider.customHeaders.isNotEmpty && provider.customHeaders != '{}') {
+        try {
+          final custom = jsonDecode(provider.customHeaders) as Map<String, dynamic>;
+          custom.forEach((k, v) => headers[k] = v.toString());
+        } catch (_) {}
+      }
+
+      final categoryNames = categoryProvider.categories.map((c) => c.name).toList();
+      final categoryList = categoryNames.isNotEmpty ? categoryNames.join('/') : '食品/药品/美妆/日用品/数码/其他';
+
+      final categorySubcategoryMap = <String, List<String>>{};
+      for (final category in categoryProvider.categories) {
+        final subs = categoryProvider.getSubcategoriesForCategory(category.id);
+        categorySubcategoryMap[category.name] = subs.map((s) => s.name).toList();
+      }
+      final subcategoryInfo = categorySubcategoryMap.entries
+          .where((e) => e.value.isNotEmpty)
+          .map((e) => '${e.key}: ${e.value.join('/')}'
+          )
+          .join('\n');
+
+      final prompt = '请识别图片中的物品，并以JSON格式返回以下信息（不要返回任何其他内容，只返回JSON）：\n'
+          '{\n'
+          '  "name": "物品名称",\n'
+          '  "category": "分类（$categoryList 之一）",\n'
+          '  "subcategory": "二级分类（可参考已有二级分类，也可返回新的二级分类。已有二级分类参考：$subcategoryInfo 。）",\n'
+          '  "brand": "品牌（如无则为null）",\n'
+          '  "manufacturer": "厂商（如无则为null）",\n'
+          '  "spec": "规格（如无则为null）",\n'
+          '  "color": "颜色（如无则为null）",\n'
+          '  "price": "单价（如无则为null）",\n'
+          '  "description": "物品描述（如无则为null）"\n'
+          '}\n'
+          '注意：若某字段无信息，其值应为null，不要返回"无品牌"、"无厂商"等文字，也不要返回空字符串。';
+
+      final body = jsonEncode({
+        'model': visionModel.modelId,
+        'messages': [
+          {
+            'role': 'user',
+            'content': [
+              {'type': 'text', 'text': prompt},
+              {
+                'type': 'image_url',
+                'image_url': {'url': 'data:image/jpeg;base64,$base64Image'},
+              },
+            ],
+          },
+        ],
+        'max_tokens': 500,
+      });
+
+      final response = await http.post(url, headers: headers, body: body).timeout(const Duration(seconds: 60));
+
+      if (dialogOpen && mounted) {
+        dialogOpen = false;
+        Navigator.pop(context);
+      }
+
+      if (response.statusCode != 200) {
+        String errorMsg = 'HTTP ${response.statusCode}';
+        try {
+          final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
+          final msg = errorBody['error']?['message'] ?? errorBody['message'] ?? '';
+          if (msg.isNotEmpty) errorMsg = msg;
+        } catch (_) {}
+        throw Exception(errorMsg);
+      }
+
+      final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
+      final content = responseBody['choices']?[0]?['message']?['content'] as String? ?? '';
+
+      final result = _parseAiVisionResponse(content, imagePath);
+      if (result != null && mounted) {
+        await _applyVisionResult(result);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('识别完成')),
+          );
+        }
+      }
+    } catch (e) {
+      if (dialogOpen && mounted) {
+        dialogOpen = false;
+        Navigator.pop(context);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('识别失败：$e')),
+        );
+      }
+    }
+  }
+
+  VisionScanResult? _parseAiVisionResponse(String content, String imagePath) {
+    try {
+      String jsonStr = content.trim();
+      jsonStr = jsonStr.replaceAll(RegExp(r'<think>[\s\S]*?</think>', caseSensitive: false), '');
+      final jsonMatch = RegExp(r'```(?:json)?\s*([\s\S]*?)```').firstMatch(jsonStr);
+      if (jsonMatch != null) {
+        jsonStr = jsonMatch.group(1)!.trim();
+      }
+      final braceStart = jsonStr.indexOf('{');
+      final braceEnd = jsonStr.lastIndexOf('}');
+      if (braceStart >= 0 && braceEnd > braceStart) {
+        jsonStr = jsonStr.substring(braceStart, braceEnd + 1);
+      }
+      try {
+        final json = jsonDecode(jsonStr) as Map<String, dynamic>;
+        return _parseVisionResultFromJson(json, imagePath);
+      } catch (_) {
+        return _parseVisionResultFromKeyValue(content, imagePath);
+      }
+    } catch (e) {
+      debugPrint('解析 AI 响应失败: $e\n原始内容: $content');
+      return null;
+    }
+  }
+
+  VisionScanResult _parseVisionResultFromJson(Map<String, dynamic> json, String imagePath) {
+    double? parsePrice(dynamic value) {
+      if (value == null) return null;
+      if (value is num) return value.toDouble();
+      if (value is String) {
+        final cleaned = value.replaceAll(RegExp(r'[^\d.]'), '');
+        return double.tryParse(cleaned);
+      }
+      return null;
+    }
+
+    return VisionScanResult(
+      name: json['name'] as String? ?? '',
+      category: json['category'] as String? ?? '其他',
+      subcategory: json['subcategory'] as String? ?? '',
+      brand: json['brand'] as String? ?? '',
+      manufacturer: json['manufacturer'] as String? ?? '',
+      spec: json['spec'] as String? ?? '',
+      color: json['color'] as String? ?? '',
+      price: parsePrice(json['price']),
+      description: json['description'] as String? ?? '',
+      imagePath: imagePath,
+    );
+  }
+
+  VisionScanResult? _parseVisionResultFromKeyValue(String content, String imagePath) {
+    try {
+      String text = content.replaceAll(RegExp(r'<think>[\s\S]*?</think>', caseSensitive: false), '');
+      final Map<String, String> data = {};
+      final lines = text.split('\n');
+      for (final line in lines) {
+        final trimmedLine = line.trim();
+        if (trimmedLine.isEmpty) continue;
+        final match = RegExp(r'^\s*(\w+)\s*[:：]\s*(.+)$').firstMatch(trimmedLine);
+        if (match != null) {
+          final key = match.group(1)!.toLowerCase().trim();
+          final value = match.group(2)!.trim();
+          data[key] = value;
+        }
+      }
+      if (data.isEmpty) return null;
+
+      double? parsePrice(String? value) {
+        if (value == null || value.isEmpty) return null;
+        final cleaned = value.replaceAll(RegExp(r'[^\d.]'), '');
+        return double.tryParse(cleaned);
+      }
+
+      return VisionScanResult(
+        name: data['name'] ?? '',
+        category: data['category'] ?? '其他',
+        subcategory: data['subcategory'] ?? '',
+        brand: data['brand'] ?? '',
+        manufacturer: data['manufacturer'] ?? '',
+        spec: data['spec'] ?? '',
+        color: data['color'] ?? '',
+        price: parsePrice(data['price']),
+        description: data['description'] ?? '',
+        imagePath: imagePath,
+      );
+    } catch (e) {
+      debugPrint('解析键值对格式失败: $e');
+      return null;
+    }
+  }
+
+  Future<void> _navigateToScanner(BuildContext context) async {
+    final settingsProvider = context.read<SettingsProvider>();
+    if (!settingsProvider.isBarcodeConfigured) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('请先在"我的 → 扫码设置"中配置商品 API'),
+          action: SnackBarAction(
+            label: '去设置',
+            onPressed: () {
+              Navigator.pushNamed(context, '/barcode-settings');
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
+    final result = await Navigator.push<BarcodeScanResult>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const BarcodeScannerPage(),
+      ),
+    );
+
+    if (result != null && mounted) {
+      await _applyBarcodeResult(result);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('录入物品'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.camera_alt_outlined),
+            tooltip: 'AI识图',
+            onPressed: () => _navigateToAiVision(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner),
+            tooltip: '扫码录入',
+            onPressed: () => _navigateToScanner(context),
+          ),
+        ],
       ),
       body: Form(
         key: _formKey,
@@ -1727,6 +2086,20 @@ class _ItemFormPageState extends State<ItemFormPage> {
           ),
           keyboardType: TextInputType.url,
           maxLines: 1,
+          onChanged: (value) => _customAttributes[attribute.id] = value,
+        );
+      case 'text':
+        return TextFormField(
+          initialValue: currentValue,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          keyboardType: TextInputType.multiline,
+          textInputAction: TextInputAction.newline,
+          minLines: 2,
+          maxLines: null,
           onChanged: (value) => _customAttributes[attribute.id] = value,
         );
       default:

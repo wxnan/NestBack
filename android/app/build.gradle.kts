@@ -16,7 +16,6 @@ kotlin {
 android {
     namespace = "com.nestback.shouna"
     compileSdk = 36
-    // compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -30,10 +29,9 @@ android {
         applicationId = "com.nestback.shouna"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = 36  // 必须设置为 31 或更高！
         // minSdk = flutter.minSdkVersion
-        // targetSdk = flutter.targetSdkVersion
+        minSdk = flutter.minSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -88,4 +86,8 @@ afterEvaluate {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
+    // 修复启用 desugaring 后部分 Android 12L+ 设备（含 Android 16）启动闪退的问题
+    implementation("androidx.window:window:1.3.0")
+    implementation("androidx.window:window-java:1.3.0")
 }

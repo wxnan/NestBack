@@ -406,6 +406,29 @@ class _ExpiredItemsPageState extends State<ExpiredItemsPage> {
                     .toSet();
                 items = items.where((item) => !excludedSpaceIds.contains(item.spaceId)).toList();
 
+                final now = DateTime.now();
+                final today = DateTime(now.year, now.month, now.day);
+
+                // 已经过期页面按过期天数从多到少排序
+                if (!widget.isExpiring) {
+                  items.sort((a, b) {
+                    final aExpireDay = DateTime(a.expireDate!.year, a.expireDate!.month, a.expireDate!.day);
+                    final bExpireDay = DateTime(b.expireDate!.year, b.expireDate!.month, b.expireDate!.day);
+                    final aDays = today.difference(aExpireDay).inDays;
+                    final bDays = today.difference(bExpireDay).inDays;
+                    return bDays.compareTo(aDays);
+                  });
+                } else {
+                  // 即将过期页面按距离过期天数从小到大排序
+                  items.sort((a, b) {
+                    final aExpireDay = DateTime(a.expireDate!.year, a.expireDate!.month, a.expireDate!.day);
+                    final bExpireDay = DateTime(b.expireDate!.year, b.expireDate!.month, b.expireDate!.day);
+                    final aDays = aExpireDay.difference(today).inDays;
+                    final bDays = bExpireDay.difference(today).inDays;
+                    return aDays.compareTo(bDays);
+                  });
+                }
+
                 if (items.isEmpty) {
                   return Center(
                     child: Column(
